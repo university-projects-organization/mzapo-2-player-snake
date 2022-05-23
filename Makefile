@@ -8,14 +8,16 @@ LDFLAGS = -lrt -lpthread
 #LDLIBS = -lm
 
 SOURCES = snakes.c ./apo_library/mzapo_phys.c ./apo_library/mzapo_parlcd.c ./apo_library/serialize_lock.c
-#SOURCES += font_prop14x16.c font_rom8x16.c
+SOURCES += ./apo_library/font_prop14x16.c
+SOURCES += game_menu.c knobs_control.c screen.c settings_allocate.c settings_menu.c word_from_font.c
+#./apo_library/font_rom8x16.c
 TARGET_EXE = snakes
-#TARGET_IP ?= 192.168.202.127
+#TARGET_IP ?= 192.168.223.166
 ifeq ($(TARGET_IP),)
 ifneq ($(filter debug run,$(MAKECMDGOALS)),)
 $(warning The target IP address is not set)
 $(warning Run as "TARGET_IP=192.168.202.xxx make run" or modify Makefile)
-TARGET_IP ?= 192.168.223.130
+TARGET_IP ?= 192.168.223.220
 endif
 endif
 TARGET_DIR ?= /tmp/$(shell whoami)
@@ -72,7 +74,8 @@ clean:
 copy-executable: $(TARGET_EXE)
 	ssh $(SSH_OPTIONS) -t $(TARGET_USER)@$(TARGET_IP) killall gdbserver 1>/dev/null 2>/dev/null || true
 	ssh $(SSH_OPTIONS) $(TARGET_USER)@$(TARGET_IP) mkdir -p $(TARGET_DIR)
-	scp $(SSH_OPTIONS) $(TARGET_EXE) $(TARGET_USER)@$(TARGET_IP):$(TARGET_DIR)/$(TARGET_EXE)
+	scp $(SSH_OPTIONS) -r $(TARGET_EXE) resources $(TARGET_USER)@$(TARGET_IP):$(TARGET_DIR)/
+
 
 run: copy-executable $(TARGET_EXE)
 	ssh $(SSH_OPTIONS) -t $(TARGET_USER)@$(TARGET_IP) $(TARGET_DIR)/$(TARGET_EXE)
