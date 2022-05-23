@@ -36,13 +36,8 @@
 
 #define HEIGHT 320
 #define WIDTH 480
-#define BLUEPRESSED 16777216
-#define GREENPRESSED 16777216 * 2
-#define REDPRESSED 16777216 * 4
-#define BLUE 0
-#define GREEN 1
-#define RED 2
-#define ASCIISHIFT 32
+
+uint16_t colors[] = {0x00, 0xF800, 0x07E0, 0x001F};
 
 union pixel {
     struct {
@@ -53,120 +48,63 @@ union pixel {
     uint16_t d;
 };
 
-typedef struct {
-    uint16_t** array;
-    uint16_t height;
-    uint16_t width;
-} wordBuffer;
-
-union pixel**  allocateScreen(void) {
-    union pixel **screen = (union pixel**) malloc(sizeof(union pixel*) * HEIGHT);
+union pixel **allocateScreen(void) {
+    union pixel **screen = (union pixel **) malloc(sizeof(union pixel *) * HEIGHT);
     for (size_t i = 0; i < HEIGHT; ++i) {
-        screen[i] = (union pixel*) malloc(sizeof(union pixel) * WIDTH);
+        screen[i] = (union pixel *) malloc(sizeof(union pixel) * WIDTH);
     }
     return screen;
 }
 
-void freeScreen(union pixel** screen) {
+void freeScreen(union pixel **screen) {
     for (size_t i = 0; i < HEIGHT; i++) {
         free(screen[i]);
     }
     free(screen);
 }
 
-wordBuffer* allocateWordBuffer(uint16_t width, uint16_t height) {
-    wordBuffer* wordBuffer = malloc(sizeof(wordBuffer));
-    wordBuffer->array = (uint16_t**) malloc(sizeof(uint16_t*) * height);
-    for (size_t i = 0; i < height; ++i) {
-        wordBuffer->array[i] = (uint16_t*) malloc(sizeof(uint16_t) * width);
-    }
-    wordBuffer->height = height;
-    wordBuffer->width = width;
-    return wordBuffer;
-}
 
-void freeWordBuffer(wordBuffer* wordBuffer) {
-    for (size_t i = 0; i < wordBuffer->height; i++) {
-        free(wordBuffer->array[i]);
-    }
-    free(wordBuffer->array);
-    free(wordBuffer);
-}
-
-uint16_t setSymbol(wordBuffer* wordBuffer, uint16_t bufferX, uint8_t scale, uint16_t letterNumber) {
-    uint8_t symbolWidth = font_winFreeSystem14x16.width[letterNumber];
-    uint8_t symbolHeight = 16;
-    uint8_t offset = 16 - symbolWidth;
-    uint16_t symbolArrayPosition = letterNumber * symbolHeight;
-
-    for (size_t y = 0; y < symbolHeight * scale;) {
-        uint16_t currentStr = font_winFreeSystem14x16.bits[symbolArrayPosition++] >> offset;
-        uint16_t temp = currentStr;
-
-        for (size_t j = 0; j < scale; j++) {
-            uint16_t widthCopy = 1 << (symbolWidth - 1);
-            for (size_t x = 0; x < symbolWidth * scale;) {
-                for (size_t i = 0; i < scale; i++) {
-                    wordBuffer->array[y][bufferX + x] = currentStr / widthCopy;
-                    x++;
-                }
-                currentStr %= widthCopy;
-                widthCopy /= 2;
-            }
-            currentStr = temp;
-            y++;
-        }
-    }
-    return bufferX + (symbolWidth * scale);
-}
-
-wordBuffer* makeWordBuffer(char* word, uint8_t scale) {
-    uint16_t wordLen = strlen(word);
-    uint8_t wordLetters[wordLen];
-
-    uint16_t width = 0;
-    uint16_t height = 16 * scale;
-
-    for (size_t i = 0; i < wordLen; i++) {
-        wordLetters[i] = (int)word[i] - ASCIISHIFT;
-        width += font_winFreeSystem14x16.width[wordLetters[i]];
-    }
-
-    wordBuffer* wordBuffer = allocateWordBuffer(width, height);
-    uint16_t bufferX = 0;
-    for (size_t i = 0; i < wordLen; i++) {
-        bufferX = setSymbol(wordBuffer, bufferX, scale, wordLetters[i]);
-    }
-    return wordBuffer;
-}
-
-void setWordBuffer(wordBuffer* wordBuffer, union pixel **screen, uint16_t screenX, uint16_t screenY) {
-    for (size_t y = 0; y < wordBuffer->height; y++) {
-        for (size_t x = 0; x < wordBuffer->width; x++) {
-            if (wordBuffer->array[y][x] == 1) {
-                printf("1");
-                screen[screenY + y][screenX + x].d = wordBuffer->array[y][x];
-            } else {
-                printf(" ");
-            }
-        }
-        printf("\n");
-    }
-
-}
-
-
-
-void setBackground(const unsigned char *image, union pixel **screen) {
+void imageToPixelArray(unsigned char *image, union pixel **pixelArray) {
     size_t i = 0;
     for (size_t y = 0; y < HEIGHT; y++) {
         for (size_t x = 0; x < WIDTH; x++) {
-            screen[y][x].r = image[i] >> 3;
-            screen[y][x].g = image[i + 1] >> 2;
-            screen[y][x].b = image[i + 2] >> 3;
+            pixelArray[y][x].r = image[i] >> 3;
+            pixelArray[y][x].g = image[i + 1] >> 2;
+            pixelArray[y][x].b = image[i + 2] >> 3;
             i += 3;
         }
     }
+}
+
+void setBackground(union pixel **background, union pixel **screen) {
+    for (size_t y = 0; y < HEIGHT; y++) {
+        for (size_t x = 0; x < WIDTH; x++) {
+            screen[y][x].d = background[y][x].d;
+        }
+    }
+}
+
+void setSettingsMenuBackground(union pixel **background, unsigned char *image) {
+    imageToPixelArray(image, background);
+    setBackground(background, background);
+    wordBuffer *wordSnakesColor = makeWordBuffer("Snakes color:", 2);
+    wordBuffer *wordFoodOwner = makeWordBuffer("Food owner:", 2);
+    wordBuffer *wordFoodAmount = makeWordBuffer("Food amount:", 2);
+    wordBuffer *wordPlayVS = makeWordBuffer("Play VS:", 2);
+    wordBuffer *wordSpeed = makeWordBuffer("Speed:", 2);
+    wordBuffer *wordBoost = makeWordBuffer("Boost:", 2);
+    setWord(wordSnakesColor, 0, background, 50, 15);
+    setWord(wordFoodOwner, 0, background, 50, 65);
+    setWord(wordFoodAmount, 0, background, 50, 115);
+    setWord(wordPlayVS, 0, background, 50, 165);
+    setWord(wordSpeed, 0, background, 50, 215);
+    setWord(wordBoost, 0, background, 50, 265);
+    freeWordBuffer(wordSnakesColor);
+    freeWordBuffer(wordFoodOwner);
+    freeWordBuffer(wordFoodAmount);
+    freeWordBuffer(wordPlayVS);
+    freeWordBuffer(wordSpeed);
+    freeWordBuffer(wordBoost);
 }
 
 void setSelector(const unsigned char *selector, union pixel **screen, const size_t offsetY, const size_t offsetX) {
@@ -191,112 +129,132 @@ void loadScreen(union pixel **screen, unsigned char *parlcd_reg_base) {
     }
 }
 
-void endGame(union pixel **screen, unsigned char *background, unsigned char *apple) {
+void endGame(union pixel **screen, union pixel **background, unsigned char *selector, uint8_t *settings) {
     freeScreen(screen);
-    free(background);
-    free(apple);
-    exit(0);
+    freeScreen(background);
+    free(selector);
+    free(settings);
 }
 
-int8_t knobRotated(uint32_t actualValue, uint32_t *previousValue, int8_t knob, int8_t positions) {
-    int32_t coef = 1;
-    switch (knob) {
-        case BLUE:
-            coef = 4;
-            break;
-        case GREEN:
-            coef = 1024;
-            break;
-        case RED:
-            coef = 1;
-            break;
-    }
-    int32_t difference = actualValue - *previousValue;
-    int8_t step = (difference / coef) % positions;
-    *previousValue = actualValue;
-    return step;
+void loadSettingsMenu(union pixel **background, union pixel **screen, settingsParameter** settingsParameters, unsigned char *selector, unsigned char *parlcd_reg_base, uint16_t selectorY) {
+    setBackground(background, screen);
+    setWord(settingsParameters[0]->string[settingsParameters[0]->position], colors[settingsParameters[0]->position], screen, 250, 15);
+    setWord(settingsParameters[1]->string[settingsParameters[1]->position], colors[settingsParameters[1]->position], screen, 360, 15);
+    setWord(settingsParameters[2]->string[settingsParameters[2]->position], 0xFFFF, screen, 300, 65);
+    setWord(settingsParameters[3]->string[settingsParameters[3]->position], 0xFFFF, screen, 265, 115);
+    setWord(settingsParameters[4]->string[settingsParameters[4]->position], 0xFFFF, screen, 225, 165);
+    setWord(settingsParameters[5]->string[settingsParameters[5]->position], 0xFFFF, screen, 190, 215);
+    setWord(settingsParameters[6]->string[settingsParameters[6]->position], 0xFFFF, screen, 190, 265);
+    setSelector(selector, screen, selectorY, 0);
+    loadScreen(screen, parlcd_reg_base);
 }
 
-_Bool knobPressed(uint32_t actualKnob, uint32_t knobDigit, uint32_t knob) {
-    return actualKnob - knobDigit == knob;
-}
-
-void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned char *parlcd_reg_base) {
+void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned char *parlcd_reg_base, uint8_t *settings, uint32_t* actualG) {
     int width, height, channels;
-    unsigned char *background = stbi_load("/tmp/nazar/resources/SettingsMenu/SettingsMenu.jpg", &width, &height,
-                                          &channels, 0);
-    unsigned char *pear = stbi_load("/tmp/nazar/resources/SettingsMenu/pear.png", &width, &height, &channels, 0);
-    if (background == NULL || pear == NULL) {
+    unsigned char *backgroundPicture = stbi_load("/tmp/nazar/resources/SettingsMenu/SettingsMenu.jpg", &width, &height,
+                                                 &channels, 0);
+    unsigned char *selector = stbi_load("/tmp/nazar/resources/SettingsMenu/pear.png", &width, &height, &channels, 0);
+    if (backgroundPicture == NULL || selector == NULL) {
         printf("Can not load image\n");
         exit(0);
     }
+    union pixel **background = allocateScreen();
+    setSettingsMenuBackground(background, backgroundPicture);
+    free(backgroundPicture);
 
-    uint16_t offsetY = 15;
-    //uint32_t volicBlue = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o) % 256;
-    uint32_t previousG = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o) % 65536;
-    //uint32_t previousKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-    int8_t position = 0;
+    settingsParameter **settingsParameters = allocateSettingsParameter(settings);
+
+    uint16_t selectorY = 0;
+    int8_t selectorPosition = 0;
+    uint32_t previousKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
+    uint32_t previousB = previousKnobs % 256;
+    uint32_t previousG = previousKnobs % 65536 - previousB;
+    uint32_t previousR = previousKnobs % BLUEPRESSED - previousG - previousB;
 
     while (1) {
-        setBackground(background, screen);
         struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 1000};
 
-
         uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-        //uint32_t actualB = actualKnobs % 256;
-        uint32_t actualG = actualKnobs % 65536;
-        uint32_t actualR = actualKnobs % BLUEPRESSED;
+        uint32_t actualB = actualKnobs % 256;
+        *actualG = actualKnobs % 65536 - actualB;
+        uint32_t actualR = actualKnobs % BLUEPRESSED - *actualG - actualB;
 
 
-        int8_t step = knobRotated(actualG, &previousG, GREEN, 5);
-        position = (position + step + 5) % 5;
+        if ((*actualG - previousG) % 1024 == 0 && *actualG != previousG) {
+            int8_t step = knobRotated(*actualG, &previousG, GREEN, 6);
+            selectorPosition = (selectorPosition + step + 6) % 6;
 
-        switch (position) {
-            case 0:
-                offsetY = 20;
-                break;
-            case 1:
-                offsetY = 65;
-                break;
-            case 2:
-                offsetY = 115;
-                break;
-            case 3:
-                offsetY = 180;
-                break;
-            case 4:
-                offsetY = 250;
-                break;
-
-        }
-
-        setSelector(pear, screen, offsetY, 65);
-        loadScreen(screen, parlcd_reg_base);
-
-        if (knobPressed(actualKnobs, actualR, REDPRESSED)) {
-            printf("Red break\n");
-            break;
-        }
-
-        if (knobPressed(actualKnobs, actualR, GREENPRESSED)) {
-            switch (position) {
+            switch (selectorPosition) {
                 case 0:
-                    printf("0 pressed\n");
+                    selectorY = 0;
                     break;
                 case 1:
-                    printf("1 pressed\n");
+                    selectorY = 50;
                     break;
                 case 2:
-                    printf("2 pressed\n");
+                    selectorY = 100;
                     break;
                 case 3:
-                    printf("3 pressed\n");
+                    selectorY = 150;
                     break;
                 case 4:
-                    printf("4 pressed\n");
+                    selectorY = 200;
+                    break;
+                case 5:
+                    selectorY = 250;
+                    break;
+
+            }
+        }
+
+
+        if ((actualB - previousB) % 4 == 0 && actualB != previousB) {
+            switch (selectorPosition) {
+                case 0:
+                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 1, 4);
+                    break;
+                case 1:
+                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 2, 2);
+                    break;
+                case 2:
+                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 3, 2);
+                    break;
+                case 3:
+                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 4, 2);
+                    break;
+                case 4:
+                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 5, 3);
+                    break;
+                case 5:
+                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 6, 3);
+                    break;
+                default:
+                    previousB = actualB;
                     break;
             }
         }
+
+        if ((actualR - previousR) % 262144 == 0 && actualR != previousR) {
+            switch (selectorPosition) {
+                case 0:
+                    menuPosition(actualR, &previousR, RED, settingsParameters, 0, 4);
+                    break;
+                default:
+                    previousR = actualR;
+                    break;
+            }
+        }
+
+        if (knobPressed(actualKnobs, actualKnobs % BLUEPRESSED, REDPRESSED, spiled_reg_base)) {
+            for(size_t i = 0; i < 7; i++) {
+                settings[i] = settingsParameters[i]->position;
+            }
+            freeSettingsParameter(settingsParameters);
+            free(selector);
+            freeScreen(background);
+            break;
+        }
+        loadSettingsMenu(background, screen, settingsParameters, selector, parlcd_reg_base, selectorY);
         clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
     }
 }
@@ -308,66 +266,67 @@ int main(int argc, char *argv[]) {
     parlcd_write_cmd(parlcd_reg_base, 0x2c);
 
     int width, height, channels;
-    unsigned char *background = stbi_load("/tmp/nazar/resources/MainMenu/MainMenu.jpg", &width, &height, &channels, 0);
-    unsigned char *apple = stbi_load("/tmp/nazar/resources/MainMenu/apple.png", &width, &height, &channels, 0);
-    if (background == NULL || apple == NULL) {
+    unsigned char *backgroundPicture = stbi_load("/tmp/nazar/resources/MainMenu/MainMenu.jpg", &width, &height,
+                                                 &channels, 0);
+    unsigned char *selector = stbi_load("/tmp/nazar/resources/MainMenu/apple.png", &width, &height, &channels, 0);
+    if (backgroundPicture == NULL || selector == NULL) {
         printf("Can not load image\n");
-        exit(0);
     }
 
+    union pixel **background = allocateScreen();
+    imageToPixelArray(backgroundPicture, background);
+    free(backgroundPicture);
     union pixel **screen = allocateScreen();
 
-    wordBuffer* wordBuffer = makeWordBuffer("Sheesh!", 2);
+    uint16_t selectorY = 22;
+    uint32_t previousKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
+    uint32_t previousB = previousKnobs % 256;
+    uint32_t previousG = previousKnobs % 65536 - previousB;
 
-
-
-
-
-    uint16_t offsetY = 15;
-    uint32_t previousG = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o) % 65536;
     int8_t position = 0;
+    uint8_t *settings = (uint8_t *) malloc(sizeof(uint8_t) * 7);
+    for (size_t i = 0; i < 7; i++) {
+        settings[i] = 0;
+    }
     while (1) {
         struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 1000};
-        setBackground(background, screen);
+
 
         uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-        uint32_t actualG = actualKnobs % 65536;
+        uint32_t actualB = actualKnobs % 256;
+        uint32_t actualG = actualKnobs % 65536 - actualB;
         uint32_t actualR = actualKnobs % BLUEPRESSED;
 
-        // if (actualG != previousG) {
-        int8_t step = knobRotated(actualG, &previousG, GREEN, 4);
-        position = (position + step + 4) % 4;
-        switch (position) {
-            case 0:
-                offsetY = 10;
-                break;
-            case 1:
-                offsetY = 90;
-                break;
-            case 2:
-                offsetY = 180;
-                break;
-            case 3:
-                offsetY = 260;
-                break;
+        if ((actualG - previousG) % 1024 == 0 && actualG != previousG) {
+            int8_t step = knobRotated(actualG, &previousG, GREEN, 4);
+            position = (position + step + 4) % 4;
+            switch (position) {
+                case 0:
+                    selectorY = 22;
+                    break;
+                case 1:
+                    selectorY = 98;
+                    break;
+                case 2:
+                    selectorY = 178;
+                    break;
+                case 3:
+                    selectorY = 255;
+                    break;
+            }
         }
-        // }
-
-        setSelector(apple, screen, offsetY, 30);
-        setWordBuffer(wordBuffer, screen, 10, 60);
-        loadScreen(screen, parlcd_reg_base);
         /*
         *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_LINE_o) = rgb_knobs_value;
         *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB1_o) = rgb_knobs_value;
         *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB2_o) = rgb_knobs_value;
         */
 
-        if (knobPressed(actualKnobs, actualR, REDPRESSED)) {
-            printf("Red break\n");
+        if (knobPressed(actualKnobs, actualR, REDPRESSED, spiled_reg_base)) {
+            printf("Red button\n");
             break;
         }
 
-        if (knobPressed(actualKnobs, actualR, GREENPRESSED)) {
+        if (knobPressed(actualKnobs, actualR, GREENPRESSED, spiled_reg_base)) {
             switch (position) {
                 case 0:
                     printf("New Game pressed\n");
@@ -376,15 +335,19 @@ int main(int argc, char *argv[]) {
                     printf("Records pressed\n");
                     break;
                 case 2:
-                    settingsMenu(screen, spiled_reg_base, parlcd_reg_base);
-                    previousG = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o) % 65536;
+                    settingsMenu(screen, spiled_reg_base, parlcd_reg_base, settings, &previousG);
                     break;
                 default:
                     printf("Exit pressed\n");
-                    endGame(screen, background, apple);
+                    goto end;
             }
         }
+        setBackground(background, screen);
+        setSelector(selector, screen, selectorY, 50);
+        loadScreen(screen, parlcd_reg_base);
         clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
     }
-    endGame(screen, background, apple);
+    end:
+    endGame(screen, background, selector, settings);
+    return 0;
 }

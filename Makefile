@@ -16,7 +16,7 @@ ifeq ($(TARGET_IP),)
 ifneq ($(filter debug run,$(MAKECMDGOALS)),)
 $(warning The target IP address is not set)
 $(warning Run as "TARGET_IP=192.168.202.xxx make run" or modify Makefile)
-TARGET_IP ?= 192.168.223.165
+TARGET_IP ?= 192.168.223.220
 endif
 endif
 TARGET_DIR ?= /tmp/$(shell whoami)
@@ -67,8 +67,8 @@ ifneq ($(filter %.cpp,$(SOURCES)),)
 	  >> depend
 endif
 
-clean:
-	rm -f *.o *.a $(OBJECTS) $(TARGET_EXE) connect.gdb depend
+#clean:
+	#rm -f *.o *.a $(OBJECTS) $(TARGET_EXE) connect.gdb depend
 
 copy-executable: $(TARGET_EXE)
 	ssh $(SSH_OPTIONS) -t $(TARGET_USER)@$(TARGET_IP) killall gdbserver 1>/dev/null 2>/dev/null || true
