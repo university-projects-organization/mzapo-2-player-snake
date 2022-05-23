@@ -1,12 +1,12 @@
 /*******************************************************************
   Nazar Ponomarev, Nikita Kisel
  *******************************************************************/
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <time.h>
+
 
 #include "mzapo_parlcd.h"
 #include "knobs_control.h"
@@ -15,289 +15,73 @@
 #include "mzapo_regs.h"
 #include "pixel.h"
 #include "screen.h"
+#include "word_from_font.h"
+#include "food.h"
+#include "snake.h"
 #include "stb_library/stb_image.h"
 #include "stb_library/stb_image_write.h"
 
 #define TILESIZE 16
 
-int num = 0;
+typedef struct {
+    char *stringColor;
+    int16_t eatenApples;
+    int16_t year;
+    int16_t month;
+    int16_t day;
+    int16_t hour;
+    int16_t minute;
+} record_t;
 
-typedef struct tile_t {
-    uint16_t x;
-    uint16_t y;
-    uint8_t direction;
-} tile_t;
-
-typedef struct snake_t {
-    uint16_t length;
-    int8_t direction;
-    int8_t speed;
-    unsigned char *imageTail;
-    unsigned char *imageBody;
-    unsigned char *imageHead;
-
-    tile_t *tiles;
-    tile_t lastTile;
-} snake_t;
-
-typedef struct food_t {
-    uint16_t x;
-    uint16_t y;
-    uint16_t color;
-    unsigned char *image;
-} food_t;
-
-void setTile(snake_t *snake, uint16_t x, uint16_t y, uint8_t index, uint8_t direction) {
-    snake->tiles[index].x = x;
-    snake->tiles[index].y = y;
-    snake->tiles[index].direction = direction;
+record_t **allocateRecords() {
+    record_t **records = (record_t **)malloc(sizeof(record_t *) * 5);
+    for (size_t i = 0; i < 5; i++) {
+        records[i] = (record_t *) malloc(sizeof(record_t));
+        records[i]->stringColor = (char *) malloc(sizeof(char) * 6);
+    }
+    return records;
 }
 
-int8_t knobRotated1(uint32_t actualValue, uint32_t *previousValue, int8_t knob) {
+
+int8_t knobRotated1(uint8_t actualValue, uint8_t *previousValue, int8_t knob) {
     int coef;
     switch (knob) {
         case BLUE:
             coef = 4;
             break;
-        case GREEN:
-            coef = 1024;
-            break;
-        default:
-            coef = 262144;
+        case RED:
+            coef = 4;
             break;
     }
     int16_t difference = (actualValue - *previousValue) / coef;
     difference = difference == 63 ? -1 : difference == -63 ? 1 : difference;
-    int8_t step = difference; // % positions;
+    int8_t step = difference;
     *previousValue = actualValue;
     return step;
-}
-
-
-snake_t *allocateSnake(unsigned char *imageTail, unsigned char *imageBody, unsigned char *imageHead) {
-    snake_t *snake = (snake_t *) malloc(sizeof(snake_t));
-    snake->length = 1; // 7;
-    snake->direction = 0;
-    snake->speed = 1;
-    snake->imageTail = imageTail;
-    snake->imageBody = imageBody;
-    snake->imageHead = imageHead;
-    snake->tiles = (tile_t *) malloc(sizeof(tile_t) * 500);
-    setTile(snake, 240, 160, 0, 0);
-
-    /*
-    setTile(snake, 240, 176, 1);
-    setTile(snake, 240, 192, 2);
-    setTile(snake, 240, 208, 3);
-    setTile(snake, 240, 224, 4);
-    setTile(snake, 240, 240, 5);
-    setTile(snake, 240, 256, 6);
-     */
-
-    return snake;
-}
-
-void freeSnake(snake_t *snake) {
-    free(snake->imageHead);
-    free(snake->imageBody);
-    free(snake->imageTail);
-    free(snake->tiles);
-    free(snake);
-}
-
-_Bool checkFood(tile_t tile, food_t *food) {
-    _Bool collision = 0;
-    if (tile.x == food->x && tile.y == food->y) {
-        collision = 1;
-    }
-    return collision;
-}
-
-void generateFood(food_t *food, snake_t *snake1, snake_t *snake2, uint16_t foodX, uint16_t foodY) {
-    time_t t;
-    srand((unsigned) time(&t));
-    int x, y;
-    while (1) {
-        jump:
-        x = (rand() % 30) * TILESIZE;
-        y = (rand() % 19) * TILESIZE;
-        if (x == foodX && y == foodY) {
-            goto jump;
-        }
-        for (size_t i = 0; i < snake1->length; i++) {
-            if (x == snake1->tiles[i].x || y == snake1->tiles[i].y) {
-                goto jump;
-            }
-        }
-        for (size_t i = 0; i < snake2->length; i++) {
-            if (x == snake2->tiles[i].x || y == snake2->tiles[i].y) {
-                goto jump;
-            }
-        }
-        break;
-    }
-    food->x = x;
-    food->y = y;
-}
-
-food_t *allocateFood(snake_t *snake1, snake_t *snake2, uint16_t foodX, uint16_t foodY) {
-    food_t *food = (food_t *) malloc(sizeof(food_t));
-    generateFood(food, snake1, snake2, foodX, foodY);
-    return food;
-}
-
-void freeFood(food_t *food) {
-    free(food);
-}
-
-void setFood(union pixel **screen, food_t *food) {
-    for (size_t y = food->y; y < TILESIZE + food->y; y++) {
-        for (size_t x = food->x; x < TILESIZE + food->x; x++) {
-            screen[y][x].d = food->color;
-        }
-    }
-}
-
-void moveForward(snake_t *snake) {
-    snake->lastTile.x = snake->tiles[snake->length - 1].x;
-    snake->lastTile.y = snake->tiles[snake->length - 1].y;
-    snake->lastTile.direction = snake->tiles[snake->length - 1].direction;
-    for (size_t i = snake->length - 1; i > 0; i--) {
-        snake->tiles[i].x = snake->tiles[i - 1].x;
-        snake->tiles[i].y = snake->tiles[i - 1].y;
-        snake->tiles[i].direction = snake->tiles[i - 1].direction;
-    }
-
-    switch (snake->direction) {
-        case 0:
-            snake->tiles[0].y -= TILESIZE;
-            break;
-        case 1:
-            snake->tiles[0].x += TILESIZE;
-            break;
-        case 2:
-            snake->tiles[0].y += TILESIZE;
-            break;
-        case 3:
-            snake->tiles[0].x -= TILESIZE;
-            break;
-    }
-    snake->tiles[0].direction = snake->direction;
-}
-
-
-void up(tile_t tile, unsigned char *image, union pixel **screen) {
-    int j = 0;
-
-    for (int32_t y = tile.y + TILESIZE - 1; y >= tile.y; y--) {
-        for (int32_t x = tile.x + TILESIZE - 1; x >= tile.x; x--) {
-            printf("y - %d, x - %d\n", y, x);
-            if ( y < 0) {
-                printf("tile y - %d, tile x - %d\n", tile.y, tile.x);
-                exit(-2);
-            }
-            if (image[j + 3] == 255) {
-                screen[y][x].r = image[j] >> 3;
-                screen[y][x].g = image[j + 1] >> 2;
-                screen[y][x].b = image[j + 2] >> 3;
-            }
-            j += 4;
-        }
-    }
-}
-
-void down(tile_t tile, unsigned char *image, union pixel **screen) {
-    int j = 0;
-    for (size_t y = tile.y; y < TILESIZE + tile.y; y++) {
-        for (size_t x = tile.x; x < TILESIZE + tile.x; x++) {
-            if (image[j + 3] == 255) {
-                screen[y][x].r = image[j] >> 3;
-                screen[y][x].g = image[j + 1] >> 2;
-                screen[y][x].b = image[j + 2] >> 3;
-            }
-            j += 4;
-        }
-    }
-}
-
-void left(tile_t tile, unsigned char *image, union pixel **screen) {
-    int j = 0;
-    for (size_t x = TILESIZE + tile.x; x > tile.x; x--) {
-        for (size_t y = tile.y; y < TILESIZE + tile.y; y++) {
-            if (image[j + 3] == 255) {
-                screen[y][x].r = image[j] >> 3;
-                screen[y][x].g = image[j + 1] >> 2;
-                screen[y][x].b = image[j + 2] >> 3;
-            }
-            j += 4;
-        }
-    }
-}
-
-void right(tile_t tile, unsigned char *image, union pixel **screen) {
-    int j = 0;
-    for (size_t x = tile.x; x < TILESIZE + tile.x; x++) {
-        for (size_t y = tile.y; y < TILESIZE + tile.y; y++) {
-            if (image[j + 3] == 255) {
-                screen[y][x].r = image[j] >> 3;
-                screen[y][x].g = image[j + 1] >> 2;
-                screen[y][x].b = image[j + 2] >> 3;
-            }
-            j += 4;
-        }
-    }
-}
-
-void switchDirection(tile_t tile, unsigned char *image, union pixel **screen) {
-    switch (tile.direction) {
-        case 0:
-            up(tile, image, screen);
-            break;
-        case 1:
-            right(tile, image, screen);
-            break;
-        case 2:
-            down(tile, image, screen);
-            break;
-        case 3:
-            left(tile, image, screen);
-            break;
-    }
-}
-
-void setHead(snake_t *snake, union pixel **screen) {
-    switchDirection(snake->tiles[0], snake->imageHead, screen);
-}
-
-void setBody(snake_t *snake, union pixel **screen) {
-    for (size_t i = 1; i < snake->length - 1; i++) {
-        switchDirection(snake->tiles[i], snake->imageBody, screen);
-    }
-}
-
-void setTail(snake_t *snake, union pixel **screen) {
-    if (snake->length >= 2) {
-        switchDirection(snake->tiles[snake->length - 1], snake->imageTail, screen);
-    }
-}
-
-void setSnake(snake_t *snake, union pixel **screen) {
-    setHead(snake, screen);
-    setBody(snake, screen);
-    setTail(snake, screen);
 }
 
 _Bool checkWalls(snake_t *snake) {
     _Bool collision = 0;
 
-    if (snake->tiles[0].y < 0 || snake->tiles[0].y >= 320 || snake->tiles[0].x < 0 ||
-        snake->tiles[0].x >= 480) {
+    if (snake->tiles[0].y < 0 || snake->tiles[0].y >= 320 || snake->tiles[0].x < 0 || snake->tiles[0].x >= 480) {
         collision = 1;
     }
     return collision;
 }
 
-_Bool checkSnakeCollision(snake_t *snake1, snake_t *snake2, _Bool sameSnake) {
+_Bool checkApple(tile_t tile, food_t *food) {
+    for (size_t i = 0; i < 20; i++) {
+        if (food->array[i].x == 0) continue;
+        if (tile.x == food->array[i].x && tile.y == food->array[i].y) {
+            food->array[i].x = 0;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+_Bool checkSnakeCollision(snake_t *snake, snake_t *target, _Bool sameSnake) {
     size_t i;
     if (sameSnake) {
         i = 1;
@@ -305,106 +89,13 @@ _Bool checkSnakeCollision(snake_t *snake1, snake_t *snake2, _Bool sameSnake) {
         i = 0;
     }
 
-    for (; i < snake2->length; i++) {
-        if (snake1->tiles[0].y >= snake2->tiles[i].y && snake1->tiles[0].y < snake2->tiles[i].y + TILESIZE &&
-            snake1->tiles[0].x >= snake2->tiles[i].x && snake1->tiles[0].x < snake2->tiles[i].x + TILESIZE) {
+    for (; i < target->length; i++) {
+        if (snake->tiles[0].y >= target->tiles[i].y && snake->tiles[0].y < target->tiles[i].y + TILESIZE &&
+            snake->tiles[0].x >= target->tiles[i].x && snake->tiles[0].x < target->tiles[i].x + TILESIZE) {
             return 1;
         }
     }
     return 0;
-}
-
-void chooseDirection(snake_t *snake, int8_t step) {
-    // 0 - up, 1 - right, 2 - down, 3 - left
-
-    switch (snake->direction) {
-        case 0:
-            switch (step) {
-                case -1:
-                    snake->direction = 3;
-                    break;
-                case 1:
-                    snake->direction = 1;
-                    break;
-                default:
-                    break;
-            }
-            break;
-        case 1:
-            switch (step) {
-                case -1:
-                    snake->direction = 0;
-                    break;
-                case 1:
-                    snake->direction = 2;
-                    break;
-                default:
-                    break;
-            }
-            break;
-        case 2:
-            switch (step) {
-                case -1:
-                    snake->direction = 1;
-                    break;
-                case 1:
-                    snake->direction = 3;
-                    break;
-                default:
-                    break;
-            }
-            break;
-        case 3:
-            switch (step) {
-                case -1:
-                    snake->direction = 2;
-                    break;
-                case 1:
-                    snake->direction = 0;
-                    break;
-                default:
-                    break;
-            }
-            break;
-
-    }
-}
-
-snake_t *chooseSnakeColor(uint16_t color) {
-    int width, height, channels;
-    snake_t *snake;
-    unsigned char *tail;
-    unsigned char *body;
-    unsigned char *head;
-
-    switch (color) {
-        case 0x00:
-            tail = stbi_load("/tmp/nazar/resources/snakes/black_tail.png", &width, &height, &channels, 0);
-            body = stbi_load("/tmp/nazar/resources/snakes/black_body.png", &width, &height, &channels, 0);
-            head = stbi_load("/tmp/nazar/resources/snakes/black_head.png", &width, &height, &channels, 0);
-            break;
-        case 0xF800:
-            tail = stbi_load("/tmp/nazar/resources/snakes/red_tail.png", &width, &height, &channels, 0);
-            body = stbi_load("/tmp/nazar/resources/snakes/red_body.png", &width, &height, &channels, 0);
-            head = stbi_load("/tmp/nazar/resources/snakes/red_head.png", &width, &height, &channels, 0);
-            break;
-        case 0x07E0:
-            tail = stbi_load("/tmp/nazar/resources/snakes/green_tail.png", &width, &height, &channels, 0);
-            body = stbi_load("/tmp/nazar/resources/snakes/green_body.png", &width, &height, &channels, 0);
-            head = stbi_load("/tmp/nazar/resources/snakes/green_head.png", &width, &height, &channels, 0);
-            break;
-        case 0x001F:
-            tail = stbi_load("/tmp/nazar/resources/snakes/blue_tail.png", &width, &height, &channels, 0);
-            body = stbi_load("/tmp/nazar/resources/snakes/blue_body.png", &width, &height, &channels, 0);
-            head = stbi_load("/tmp/nazar/resources/snakes/blue_head.png", &width, &height, &channels, 0);
-            break;
-    }
-    if (tail == NULL || body == NULL || head == NULL) {
-        printf("Can not load image\n");
-    }
-
-    snake = allocateSnake(tail, body, head);
-    return snake;
 }
 
 void setUpGame(uint8_t *settings, uint16_t *color1, uint16_t *color2, _Bool *foodOwner, uint8_t *foodAmount, _Bool *vs,
@@ -413,30 +104,275 @@ void setUpGame(uint8_t *settings, uint16_t *color1, uint16_t *color2, _Bool *foo
     *color1 = colors[settings[0]];
     *color2 = colors[settings[1]];
     *foodOwner = settings[2];
+    printf("settings[3] %d\n", settings[3]);
     switch (settings[3]) {
         case 0:
-            *foodAmount = 5;/////////////////////////////////////////////////////////////////
+            *foodAmount = 20;
+            break;
         case 1:
-            *foodAmount = 10;///////////////////////////////////////////////////////////////
-
+            *foodAmount = 60;
+            break;
     }
     *vs = settings[4];
     switch (settings[3]) {
         case 0:
-            *speed = 5;/////////////////////////////////////////////////////////////////
+            *speed = 5;
+            break;
         case 1:
-            *speed = 10;///////////////////////////////////////////////////////////////
+            *speed = 10;
+            break;
 
     }
     switch (settings[3]) {
         case 0:
-            *boost = 5;/////////////////////////////////////////////////////////////////
+            *boost = 5;
+            break;
         case 1:
-            *boost = 10;///////////////////////////////////////////////////////////////
+            *boost = 10;
+            break;
 
     }
 }
 
+void selectColor(uint16_t color, char *stringColor) {
+    switch (color) {
+        case 0x00:
+            stringColor[0] = 'B';
+            stringColor[1] = 'L';
+            stringColor[2] = 'A';
+            stringColor[3] = 'C';
+            stringColor[4] = 'K';
+            stringColor[5] = '\0';
+            break;
+        case 0xF800:
+            stringColor[0] = 'R';
+            stringColor[1] = 'E';
+            stringColor[2] = 'D';
+            stringColor[3] = '\0';
+            break;
+        case 0x07E0:
+            stringColor[0] = 'G';
+            stringColor[1] = 'R';
+            stringColor[2] = 'E';
+            stringColor[3] = 'E';
+            stringColor[4] = 'N';
+            stringColor[5] = '\0';
+            break;
+        case 0x001F:
+            stringColor[0] = 'B';
+            stringColor[1] = 'L';
+            stringColor[2] = 'U';
+            stringColor[2] = 'E';
+            stringColor[3] = '\0';
+            break;
+    }
+}
+
+void writeRecord(record_t *record, uint16_t color, FILE *fp) {
+    fprintf(fp, "%s %d %d-%02d-%02d %02d:%02d\n", record->stringColor, record->eatenApples, record->year, record->month,
+            record->month, record->day, record->hour);
+    fclose(fp);
+}
+
+void readLine(FILE *fp, record_t *record) {
+    size_t i = 0;
+    while (1) {
+        char str[2];
+        fgets(str, 1, fp);
+        if (str[0] == ' ') {
+            record->stringColor[i] = '\0';
+            break;
+        } else {
+            record->stringColor[i] = str[0];
+            i++;
+        }
+    }
+
+
+    char number[5];
+    i = 0;
+    while (1) {
+        char str[2];
+        fgets(str, 1, fp);
+        if (str[0] == ' ') {
+            number[i] = '\0';
+            break;
+        } else {
+            number[i] = str[0];
+            i++;
+        }
+    }
+    record->eatenApples = atoi(number);
+
+    i = 0;
+    while (1) {
+        char str[2];
+        fgets(number, 1, fp);
+        if (number[0] == '-') {
+            number[i] = '\0';
+            break;
+        } else {
+            number[i] = str[0];
+            i++;
+        }
+    }
+    record->year = atoi(number);
+
+    i = 0;
+    while (1) {
+        char str[2];
+        fgets(number, 1, fp);
+        if (number[0] == '-') {
+            number[i] = '\0';
+            break;
+        } else {
+            number[i] = str[0];
+            i++;
+        }
+    }
+    record->month = atoi(number);
+
+    i = 0;
+    while (1) {
+        char str[2];
+        fgets(number, 1, fp);
+        if (number[0] == ' ') {
+            number[i] = '\0';
+            break;
+        } else {
+            number[i] = str[0];
+            i++;
+        }
+    }
+    record->day = atoi(number);
+
+    i = 0;
+    while (1) {
+        char str[2];
+        fgets(number, 1, fp);
+        if (number[0] == ':') {
+            number[i] = '\0';
+            break;
+        } else {
+            number[i] = str[0];
+            i++;
+        }
+    }
+    record->hour = atoi(number);
+
+    i = 0;
+    while (1) {
+        char str[2];
+        fgets(number, 1, fp);
+        if (number[0] == '\n') {
+            number[i] = '\0';
+            break;
+        } else {
+            number[i] = str[0];
+            i++;
+        }
+    }
+    record->minute = atoi(number);
+}
+
+record_t **readRecords() {
+    record_t **records = allocateRecords();
+    FILE *fp = fopen("\\resources\\records\\records.txt", "r");
+
+    size_t i = 0;
+    while (feof(fp)) {
+        readLine(fp, records[i]);
+        i++;
+    }
+    return records;
+}
+
+record_t *setNewRecord(uint16_t color, uint16_t eatenApples) {
+    record_t *record = malloc(sizeof(record));
+    record->stringColor = (char *) malloc(sizeof(char) * 6);
+    selectColor(color, record->stringColor);
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    record->eatenApples = eatenApples;
+    record->year = tm.tm_year + 1900;
+    record->month = tm.tm_mon + 1;
+    record->day = tm.tm_mday;
+    record->hour = tm.tm_hour;
+    record->minute = tm.tm_min;
+    return record;
+}
+
+void saveRecords(snake_t *snake, uint16_t color, record_t **records) {
+    FILE *fp = fopen("\\resources\\records\\records.txt", "w");
+    if (fp == NULL) {
+        printf("Can't open file\n");
+    }
+
+    record_t *newRecord = setNewRecord(color, snake->length + 1);
+
+    for (size_t i = 0; i < 5; i++) {
+        if (newRecord->eatenApples > records[i]->eatenApples) {
+            writeRecord(newRecord, color, fp);
+        } else {
+            writeRecord(records[i], color, fp);
+        }
+        i++;
+    }
+}
+
+
+void gameOver(snake_t *snake, uint16_t color, union pixel **screen, volatile void *spiled_reg_base,
+              unsigned char *parlcd_reg_base) {
+    wordBuffer *word = makeWordBuffer("GAME OVER", 5);
+    setWord(word, (uint16_t) 0x000, screen, 50, HEIGHT / 2 - 16 * 2);
+    loadScreen(screen, parlcd_reg_base);
+    record_t **records = readRecords();
+    saveRecords(snake, color, records);
+    exit(0);
+}
+
+void displayOneRecord(record_t *record, union pixel **screen, uint16_t x, uint16_t y) {
+    wordBuffer *word = makeWordBuffer(record->stringColor, 2);
+
+    freeWordBuffer(word);
+
+    char string[6];
+    sprintf(string, "%d", record->eatenApples);
+    word = makeWordBuffer(string, 1);
+    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
+
+    sprintf(string, "%d", record->year);
+    word = makeWordBuffer(string, 1);
+    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
+
+    sprintf(string, "%d", record->month);
+    word = makeWordBuffer(string, 1);
+    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
+
+    sprintf(string, "%d", record->day);
+    word = makeWordBuffer(string, 1);
+    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
+
+    sprintf(string, "%d", record->hour);
+    word = makeWordBuffer(string, 1);
+    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
+
+    sprintf(string, "%d", record->minute);
+    word = makeWordBuffer(string, 1);
+    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
+}
+
+void recordsMenu(union pixel **screen, unsigned char *parlcd_reg_base) {
+    record_t **records = readRecords();
+    uint16_t x = 0;
+    uint16_t y = 0;
+    for (size_t i = 0; i < 5; i++) {
+        displayOneRecord(records[i], screen,  x,  y);
+        y += 20;
+    }
+    loadScreen(screen, parlcd_reg_base);
+
+}
 
 int main(int argc, char *argv[]) {
     volatile void *spiled_reg_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
@@ -453,45 +389,50 @@ int main(int argc, char *argv[]) {
     }
 
     int width, height, channels;
-    unsigned char *backgroundPicture = stbi_load("/tmp/nazar/resources/GameField/GameBack.jpg", &width, &height,
+    unsigned char *backgroundPicture = stbi_load("/tmp/nazar/resources/GameField/GameBack.png", &width, &height,
                                                  &channels, 0);
     if (backgroundPicture == NULL) {
         printf("Can not load image\n");
     }
 
     union pixel **background = allocateScreen();
-    imageToPixelArray(backgroundPicture, background);
+    pngImageToPixelArray(backgroundPicture, background);
     free(backgroundPicture);
 
-    int counterSpeed = 5;
+
+    int counterSpeed = 30;
     int boost1 = 5;
     uint16_t color1;
     uint16_t color2;
     _Bool foodOwner;
     uint8_t foodAmount;
-    _Bool vs;
+    _Bool collisions;
     uint8_t speed;
     uint8_t boost;
-    setUpGame(settings, &color1, &color2, &foodOwner, &foodAmount, &vs, &speed, &boost);
-    snake_t *snake1 = chooseSnakeColor(color1);
-    snake_t *snake2 = chooseSnakeColor(color2);
-    food_t *apple1 = allocateFood(snake1, snake2, 500, 500);
-    food_t *apple2 = allocateFood(snake1, snake2, apple1->x, apple1->y);
-    apple1->color = color1;
-    apple2->color = color2;
+
+    setUpGame(settings, &color1, &color2, &foodOwner, &foodAmount, &collisions, &speed, &boost);
+    food_t *food1 = allocateFood();
+    food_t *food2 = allocateFood();
+    snake_t *snake1 = chooseColor(color1, food1, (uint16_t) 0, (uint16_t) 160, (int8_t) 1);
+    snake_t *snake2 = chooseColor(color2, food2, (uint16_t) 464, (uint16_t) 160, (int8_t) 3);
+    int frequency = foodAmount;
+
+    int k = 30;
 
     uint32_t previousKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-    uint32_t previousB = previousKnobs % 256;
-    uint32_t previousG = previousKnobs % 65536 - previousB;
-    uint32_t previousR = previousKnobs % BLUEPRESSED - previousG - previousB;
+    uint8_t previousB = (uint8_t)previousKnobs;
+    uint8_t previousG = (uint8_t)(previousKnobs >> 8);
+    uint8_t previousR = (uint8_t)(previousKnobs >> 16);
 
     while (1) {
-        struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 100 * 1000 * 1000};
+        struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 2000 * 1000 * 1000};
 
         uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-        uint32_t actualB = actualKnobs % 256;
-        uint32_t actualG = actualKnobs % 65536 - actualB;
-        uint32_t actualR = actualKnobs % BLUEPRESSED - actualG - actualB;
+        uint8_t actualB = (uint8_t)actualKnobs;
+        uint8_t actualG = (uint8_t)(actualKnobs >> 8); // actualKnobs % 65536 - actualB;
+        uint8_t actualR = (uint8_t)(actualKnobs >> 16); // actualKnobs % BLUEPRESSED;
+
+        uint8_t whichKnobPressed = (uint8_t)(actualKnobs >> 24);
 
         if ((actualB - previousB) % 4 == 0 && actualB != previousB) {
             int8_t step = knobRotated1(actualB, &previousB, BLUE);
@@ -502,7 +443,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if ((actualR - previousR) % 262144 == 0 && actualR != previousR) {
+        if ((actualR - previousR) % 4 == 0 && actualR != previousR) {
             int8_t step = knobRotated1(actualR, &previousR, RED);
             if (step < -1 || step > 1) {
                 printf("neok\n");
@@ -511,69 +452,117 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if (knobPressed(actualKnobs, actualKnobs % BLUEPRESSED, REDPRESSED, spiled_reg_base)) {
+
+        if (whichKnobPressed == 4) {
             printf("RED EXIT\n");
             exit(-1);
         }
 
 
-        if (counterSpeed == boost1) {
+        if (k == counterSpeed) {
             moveForward(snake1);
             moveForward(snake2);
-            counterSpeed = 0;
+            k = 0;
+        } else {
+            k++;
         }
-        counterSpeed++;
+
 
         if (checkWalls(snake1)) {
-            exit(0);
-            //insert exit here;
+            gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base);
         }
         if (checkWalls(snake2)) {
-            exit(0);
-            //insert exit here;
+            gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base);
         }
 
-        if (checkSnakeCollision(snake1, snake1, 1)) {
-            printf("Coll1 sam\n");
+        if (collisions) {
+            if (checkSnakeCollision(snake1, snake1, 1)) {
+                gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base);
+            }
+
+            if (checkSnakeCollision(snake2, snake2, 1)) {
+                gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base);
+            }
+
+            if (checkSnakeCollision(snake1, snake2, 0)) {
+                gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base);
+            }
+
+            if (checkSnakeCollision(snake2, snake1, 0)) {
+                gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base);
+            }
         }
 
-        if (checkSnakeCollision(snake2, snake2, 1)) {
-            printf("Coll2 sam\n");
+        if (frequency == foodAmount) {
+            if (food1->length < 20) {
+                generateApple(snake1, snake2, food1, food2);
+            }
+            if (food2->length < 20) {
+                generateApple(snake1, snake2, food2, food1);
+            }
+            frequency = 0;
+        } else {
+            frequency++;
         }
 
-        if (checkSnakeCollision(snake1, snake2, 0)) {
-            printf("Coll 12 sam\n");
-        }
 
-        if (checkSnakeCollision(snake2, snake1, 0)) {
-            printf("Coll 21 sam\n");
-        }
-
-        if (checkFood(snake1->tiles[0], apple1)) {
-            generateFood(apple1, snake1, snake2, apple2->x, apple2->y);
+        if (checkApple(snake1->tiles[0], food1)) {
             snake1->length++;
             snake1->tiles[snake1->length - 1].x = snake1->lastTile.x;
             snake1->tiles[snake1->length - 1].y = snake1->lastTile.y;
             snake1->tiles[snake1->length - 1].direction = snake1->lastTile.direction;
-            boost1--;
-            boost1 = boost1 <= 0 ? 5 : boost1;
+            counterSpeed = counterSpeed == 1 ? 1 : counterSpeed - 1;
 
         }
-        if (checkFood(snake2->tiles[0], apple2)) {
-            generateFood(apple2, snake1, snake2, apple1->x, apple1->y);
+        if (checkApple(snake2->tiles[0], food2)) {
             snake2->length++;
             snake2->tiles[snake2->length - 1].x = snake2->lastTile.x;
             snake2->tiles[snake2->length - 1].y = snake2->lastTile.y;
             snake1->tiles[snake2->length - 1].direction = snake2->lastTile.direction;
-            boost1--;
-            boost1 = boost1 <= 0 ? 5 : boost1;
+            counterSpeed = counterSpeed == 1 ? 1 : counterSpeed - 1;
+        }
+        if (!foodOwner) {
+            if (checkApple(snake1->tiles[0], food2)) {
+                snake1->length++;
+                snake1->tiles[snake1->length - 1].x = snake1->lastTile.x;
+                snake1->tiles[snake1->length - 1].y = snake1->lastTile.y;
+                snake1->tiles[snake1->length - 1].direction = snake1->lastTile.direction;
+                counterSpeed = counterSpeed == 1 ? 1 : counterSpeed - 1;
+            }
+            if (checkApple(snake2->tiles[0], food1)) {
+                snake2->length++;
+                snake2->tiles[snake2->length - 1].x = snake2->lastTile.x;
+                snake2->tiles[snake2->length - 1].y = snake2->lastTile.y;
+                snake1->tiles[snake2->length - 1].direction = snake2->lastTile.direction;
+                counterSpeed = counterSpeed == 1 ? 1 : counterSpeed - 1;
+            }
         }
 
         setBackground(background, screen);
-        setFood(screen, apple1);
-        setFood(screen, apple2);
+        setFood(screen, food1);
+        setFood(screen, food2);
         setSnake(snake1, screen);
         setSnake(snake2, screen);
+
+        setPngImage(screen, 0, 0, snake1->color, 32);
+        char string[6];
+        sprintf(string, "%d", snake1->length - 1);
+        wordBuffer *word = makeWordBuffer(string, 2);
+        setWord(word, color1, screen, 33, 0);
+        free(word);
+
+        setPngImage(screen, 447, 0, snake2->color, 32);
+        sprintf(string, "%d", snake2->length - 1);
+        word = makeWordBuffer(string, 2);
+        uint16_t screenX = 432;
+        if (snake2->length - 1 >= 10 && snake2->length - 1 < 100) {
+            screenX -= 14;
+        } else if (snake2->length - 1 >= 100) {
+            screenX -= 30;
+        }
+        setWord(word, color2, screen, screenX, 0);
+        free(word);
+
         loadScreen(screen, parlcd_reg_base);
         clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
     }

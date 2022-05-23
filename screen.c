@@ -31,6 +31,20 @@ void imageToPixelArray(unsigned char *image, union pixel **pixelArray) {
     }
 }
 
+void pngImageToPixelArray(unsigned char *image, union pixel **pixelArray) {
+    size_t i = 0;
+    for (size_t y = 0; y < HEIGHT; y++) {
+        for (size_t x = 0; x < WIDTH; x++) {
+            if (image[i + 3 ] == 255) {
+                pixelArray[y][x].r = image[i] >> 3;
+                pixelArray[y][x].g = image[i + 1] >> 2;
+                pixelArray[y][x].b = image[i + 2] >> 3;
+            }
+            i += 4;
+        }
+    }
+}
+
 void setBackground(union pixel **background, union pixel **screen) {
     for (size_t y = 0; y < HEIGHT; y++) {
         for (size_t x = 0; x < WIDTH; x++) {
@@ -57,6 +71,20 @@ void loadScreen(union pixel **screen, unsigned char *parlcd_reg_base) {
     for (size_t y = 0; y < HEIGHT; y++) {
         for (size_t x = 0; x < WIDTH; x++) {
             parlcd_write_data(parlcd_reg_base, screen[y][x].d);
+        }
+    }
+}
+
+void setPngImage(union pixel **screen, uint16_t screenX, uint16_t screenY, unsigned char *image, uint16_t size) {
+    size_t i = 0;
+    for (size_t y = screenY; y < (screenY + size); y++) {
+        for (size_t x = screenX; x < (screenX + size); x++) {
+            if (image[i + 3] == 255) {
+                screen[y][x].r = image[i] >> 3;
+                screen[y][x].g = image[i + 1] >> 2;
+                screen[y][x].b = image[i + 2] >> 3;
+            }
+            i += 4;
         }
     }
 }

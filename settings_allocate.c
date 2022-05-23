@@ -43,8 +43,8 @@ settingsParameter **allocateSettingsParameter(uint8_t *settings) {
     // PlayVS
     settingsParameters[4]->string = malloc(sizeof(wordBuffer *) * 2);
     settingsParameters[4]->position = settings[4];
-    settingsParameters[4]->string[0] = makeWordBuffer("AI", 2);
-    settingsParameters[4]->string[1] = makeWordBuffer("PLAYER", 2);
+    settingsParameters[4]->string[0] = makeWordBuffer("OFF", 2);
+    settingsParameters[4]->string[1] = makeWordBuffer("ON", 2);
 
     // Speed
     settingsParameters[5]->string = malloc(sizeof(wordBuffer *) * 3);

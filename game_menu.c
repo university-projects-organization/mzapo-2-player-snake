@@ -32,8 +32,8 @@ _Bool gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_re
 
     uint16_t selectorY = 22;
     uint32_t previousKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-    uint32_t previousB = previousKnobs % 256;
-    uint32_t previousG = previousKnobs % 65536 - previousB;
+    uint8_t previousB = (uint8_t)previousKnobs;
+    uint8_t previousG = (uint8_t)(previousKnobs >> 8);
 
     int8_t position = 0;
     while (1) {
@@ -41,12 +41,14 @@ _Bool gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_re
 
 
         uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-        uint32_t actualB = actualKnobs % 256;
-        uint32_t actualG = actualKnobs % 65536 - actualB;
-        uint32_t actualR = actualKnobs % BLUEPRESSED;
+        uint8_t actualB = (uint8_t)actualKnobs;
+        uint8_t actualG = (uint8_t)(actualKnobs >> 8); // actualKnobs % 65536 - actualB;
+        uint8_t actualR = (uint8_t)(actualKnobs >> 16); // actualKnobs % BLUEPRESSED;
 
-        if ((actualG - previousG) % 1024 == 0 && actualG != previousG) {
-            int8_t step = knobRotated(actualG, &previousG, GREEN, 4);
+        uint8_t whichKnobPressed = (uint8_t)(actualKnobs >> 24);
+
+        if ((actualG - previousG) % 4 == 0 && actualG != previousG) {
+            int8_t step = knobRotated(actualG, &previousG, 4);
             position = (position + step + 4) % 4;
             switch (position) {
                 case 0:
@@ -69,12 +71,13 @@ _Bool gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_re
         *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB2_o) = rgb_knobs_value;
         */
 
-        if (knobPressed(actualKnobs, actualR, REDPRESSED, spiled_reg_base)) {
+        if (whichKnobPressed == 4) {
             printf("Red button\n");
             break;
         }
 
-        if (knobPressed(actualKnobs, actualR, GREENPRESSED, spiled_reg_base)) {
+
+        if (whichKnobPressed == 2) {
             switch (position) {
                 case 0:
                     printf("New Game pressed\n");

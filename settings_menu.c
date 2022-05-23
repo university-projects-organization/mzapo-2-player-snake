@@ -53,12 +53,12 @@ void loadSettingsMenu(union pixel **background, union pixel **screen, settingsPa
     loadScreen(screen, parlcd_reg_base);
 }
 
-void menuPosition(uint32_t actual, uint32_t *previous, int knob, settingsParameter** settingsParameters, int8_t index, int8_t numOptions) {
-    int8_t step = knobRotated(actual, previous, knob, numOptions);
+void menuPosition(uint8_t actual, uint8_t *previous, settingsParameter** settingsParameters, int8_t index, int8_t numOptions) {
+    int8_t step = knobRotated(actual, previous, numOptions);
     settingsParameters[index]->position = (settingsParameters[index]->position + step + numOptions) % numOptions;
 }
 
-void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned char *parlcd_reg_base, uint8_t *settings, uint32_t* actualG) {
+void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned char *parlcd_reg_base, uint8_t *settings, uint8_t* actualG) {
     int width, height, channels;
     unsigned char *backgroundPicture = stbi_load("/tmp/nazar/resources/SettingsMenu/SettingsMenu.jpg", &width, &height,
                                                  &channels, 0);
@@ -76,21 +76,24 @@ void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned
     uint16_t selectorY = 0;
     int8_t selectorPosition = 0;
     uint32_t previousKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-    uint32_t previousB = previousKnobs % 256;
-    uint32_t previousG = previousKnobs % 65536 - previousB;
-    uint32_t previousR = previousKnobs % BLUEPRESSED - previousG - previousB;
+    uint8_t previousB = (uint8_t)previousKnobs;
+    uint8_t previousG = (uint8_t)(previousKnobs >> 8);
+    uint8_t previousR = (uint8_t)(previousKnobs >> 16);
 
     while (1) {
         struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 1000};
 
         uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-        uint32_t actualB = actualKnobs % 256;
-        *actualG = actualKnobs % 65536 - actualB;
-        uint32_t actualR = actualKnobs % BLUEPRESSED - *actualG - actualB;
+
+        uint8_t actualB = (uint8_t)actualKnobs;
+        *actualG = (uint8_t)(actualKnobs >> 8); // actualKnobs % 65536 - actualB;
+        uint8_t actualR = (uint8_t)(actualKnobs >> 16); // actualKnobs % BLUEPRESSED;
+
+        uint8_t whichKnobPressed = (uint8_t)(actualKnobs >> 24);
 
 
-        if ((*actualG - previousG) % 1024 == 0 && *actualG != previousG) {
-            int8_t step = knobRotated(*actualG, &previousG, GREEN, 6);
+        if ((*actualG - previousG) % 4 == 0 && *actualG != previousG) {
+            int8_t step = knobRotated(*actualG, &previousG, 6);
             selectorPosition = (selectorPosition + step + 6) % 6;
 
             switch (selectorPosition) {
@@ -120,22 +123,22 @@ void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned
         if ((actualB - previousB) % 4 == 0 && actualB != previousB) {
             switch (selectorPosition) {
                 case 0:
-                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 1, 4);
+                    menuPosition(actualB, &previousB, settingsParameters, 1, 4);
                     break;
                 case 1:
-                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 2, 2);
+                    menuPosition(actualB, &previousB, settingsParameters, 2, 2);
                     break;
                 case 2:
-                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 3, 2);
+                    menuPosition(actualB, &previousB, settingsParameters, 3, 2);
                     break;
                 case 3:
-                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 4, 2);
+                    menuPosition(actualB, &previousB, settingsParameters, 4, 2);
                     break;
                 case 4:
-                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 5, 3);
+                    menuPosition(actualB, &previousB, settingsParameters, 5, 3);
                     break;
                 case 5:
-                    menuPosition(actualB, &previousB, BLUE, settingsParameters, 6, 3);
+                    menuPosition(actualB, &previousB, settingsParameters, 6, 3);
                     break;
                 default:
                     previousB = actualB;
@@ -143,10 +146,10 @@ void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned
             }
         }
 
-        if ((actualR - previousR) % 262144 == 0 && actualR != previousR) {
+        if ((actualR - previousR) % 4 == 0 && actualR != previousR) {
             switch (selectorPosition) {
                 case 0:
-                    menuPosition(actualR, &previousR, RED, settingsParameters, 0, 4);
+                    menuPosition(actualR, &previousR, settingsParameters, 0, 4);
                     break;
                 default:
                     previousR = actualR;
@@ -154,7 +157,7 @@ void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned
             }
         }
 
-        if (knobPressed(actualKnobs, actualKnobs % BLUEPRESSED, REDPRESSED, spiled_reg_base)) {
+        if (whichKnobPressed == 4) {
             for(size_t i = 0; i < 7; i++) {
                 settings[i] = settingsParameters[i]->position;
             }
