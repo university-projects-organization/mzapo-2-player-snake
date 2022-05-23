@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #define ASCIISHIFT 32
 
 #include <stdint.h>
@@ -7,16 +6,6 @@
 #include "apo_library/font_types.h"
 #include "word_buffer.h"
 #include "pixel.h"
-=======
-
-#define ASCIISHIFT 32
-
-typedef struct {
-    uint16_t **array;
-    uint16_t height;
-    uint16_t width;
-} wordBuffer;
->>>>>>> b878198bbf26b6f78952c51c8218db35dc7948cb
 
 wordBuffer *allocateWordBuffer(uint16_t width, uint16_t height) {
     wordBuffer *font = malloc(sizeof(wordBuffer));

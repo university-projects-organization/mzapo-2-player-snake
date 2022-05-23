@@ -16,8 +16,6 @@
 
 #include "stb_library/stb_image_write.h"
 
-uint16_t colors[] = {0x00, 0xF800, 0x07E0, 0x001F};
-
 void setSettingsMenuBackground(union pixel **background, unsigned char *image) {
     imageToPixelArray(image, background);
     setBackground(background, background);
@@ -43,6 +41,7 @@ void setSettingsMenuBackground(union pixel **background, unsigned char *image) {
 
 void loadSettingsMenu(union pixel **background, union pixel **screen, settingsParameter** settingsParameters, unsigned char *selector, unsigned char *parlcd_reg_base, uint16_t selectorY) {
     setBackground(background, screen);
+    uint16_t colors[] = {0x00, 0xF800, 0x07E0, 0x001F};
     setWord(settingsParameters[0]->string[settingsParameters[0]->position], colors[settingsParameters[0]->position], screen, 250, 15);
     setWord(settingsParameters[1]->string[settingsParameters[1]->position], colors[settingsParameters[1]->position], screen, 360, 15);
     setWord(settingsParameters[2]->string[settingsParameters[2]->position], 0xFFFF, screen, 300, 65);
