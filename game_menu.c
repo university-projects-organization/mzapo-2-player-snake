@@ -4,6 +4,7 @@
 #include "apo_library/mzapo_regs.h"
 #include "screen.h"
 #include "settings_menu.h"
+#include "records.h"
 #include "knobs_control.h"
 #include "stb_library/stb_image.h"
 #include "stb_library/stb_image_write.h"
@@ -15,7 +16,8 @@ void endGame(union pixel **screen, union pixel **background, unsigned char *sele
     free(settings);
 }
 
-_Bool gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_reg_base, unsigned char *parlcd_reg_base) {
+_Bool
+gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_reg_base, unsigned char *parlcd_reg_base, uint32_t* colorLed1, uint32_t* colorLed2) {
     _Bool ret = 0;
 
     int width, height, channels;
@@ -32,8 +34,8 @@ _Bool gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_re
 
     uint16_t selectorY = 22;
     uint32_t previousKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-    uint8_t previousB = (uint8_t)previousKnobs;
-    uint8_t previousG = (uint8_t)(previousKnobs >> 8);
+    uint8_t previousB = (uint8_t) previousKnobs;
+    uint8_t previousG = (uint8_t) (previousKnobs >> 8);
 
     int8_t position = 0;
     while (1) {
@@ -41,11 +43,11 @@ _Bool gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_re
 
 
         uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-        uint8_t actualB = (uint8_t)actualKnobs;
-        uint8_t actualG = (uint8_t)(actualKnobs >> 8); // actualKnobs % 65536 - actualB;
-        uint8_t actualR = (uint8_t)(actualKnobs >> 16); // actualKnobs % BLUEPRESSED;
+        uint8_t actualB = (uint8_t) actualKnobs;
+        uint8_t actualG = (uint8_t) (actualKnobs >> 8); // actualKnobs % 65536 - actualB;
+        uint8_t actualR = (uint8_t) (actualKnobs >> 16); // actualKnobs % BLUEPRESSED;
 
-        uint8_t whichKnobPressed = (uint8_t)(actualKnobs >> 24);
+        uint8_t whichKnobPressed = (uint8_t) (actualKnobs >> 24);
 
         if ((actualG - previousG) % 4 == 0 && actualG != previousG) {
             int8_t step = knobRotated(actualG, &previousG, 4);
@@ -65,19 +67,17 @@ _Bool gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_re
                     break;
             }
         }
-        /*
-        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_LINE_o) = rgb_knobs_value;
-        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB1_o) = rgb_knobs_value;
-        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB2_o) = rgb_knobs_value;
-        */
 
         if (whichKnobPressed == 4) {
+            knobUnpressed(spiled_reg_base);
+            endGame(screen, background, selector, settings);
             printf("Red button\n");
-            break;
+            goto end;
         }
 
 
         if (whichKnobPressed == 2) {
+            knobUnpressed(spiled_reg_base);
             switch (position) {
                 case 0:
                     printf("New Game pressed\n");
@@ -86,10 +86,10 @@ _Bool gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_re
                     free(selector);
                     goto end;
                 case 1:
-                    printf("Records pressed\n");
+                    recordsMenu(screen, spiled_reg_base, parlcd_reg_base, &previousG);
                     break;
                 case 2:
-                    settingsMenu(screen, spiled_reg_base, parlcd_reg_base, settings, &previousG);
+                    settingsMenu(screen, spiled_reg_base, parlcd_reg_base, settings, &previousG, colorLed1, colorLed2);
                     break;
                 default:
                     printf("Exit pressed\n");
@@ -97,6 +97,9 @@ _Bool gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_re
                     goto end;
             }
         }
+        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_LINE_o) = (2 << 32) - 1;
+        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB1_o) = *colorLed1;
+        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB2_o) = *colorLed2;
         setBackground(background, screen);
         setSelector(selector, screen, selectorY, 50);
         loadScreen(screen, parlcd_reg_base);

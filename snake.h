@@ -8,7 +8,9 @@
 
 void setTile(snake_t *snake, uint16_t x, uint16_t y, uint8_t index, uint8_t direction);
 
-snake_t* allocateSnake(unsigned char *imageTail, unsigned char *imageBody, unsigned char *imageHead, unsigned char *color1, uint16_t x, uint16_t y, int8_t direction);
+snake_t *
+allocateSnake(unsigned char *imageTail, unsigned char *imageBody, unsigned char *imageHead, unsigned char *color1,
+              uint16_t x, uint16_t y, int8_t direction);
 
 void freeSnake(snake_t *snake);
 

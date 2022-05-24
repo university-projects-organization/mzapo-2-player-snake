@@ -22,6 +22,6 @@ void setSelector(const unsigned char *selector, union pixel **screen, const size
 
 void loadScreen(union pixel **screen, unsigned char *parlcd_reg_base);
 
-void setPngImage(union pixel **screen, uint16_t screenX, uint16_t screenY, unsigned char*image, uint16_t size);
+void setPngImage(union pixel **screen, uint16_t screenX, uint16_t screenY, unsigned char *image, uint16_t size);
 
 #endif

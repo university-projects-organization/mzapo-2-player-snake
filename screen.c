@@ -35,7 +35,7 @@ void pngImageToPixelArray(unsigned char *image, union pixel **pixelArray) {
     size_t i = 0;
     for (size_t y = 0; y < HEIGHT; y++) {
         for (size_t x = 0; x < WIDTH; x++) {
-            if (image[i + 3 ] == 255) {
+            if (image[i + 3] == 255) {
                 pixelArray[y][x].r = image[i] >> 3;
                 pixelArray[y][x].g = image[i + 1] >> 2;
                 pixelArray[y][x].b = image[i + 2] >> 3;

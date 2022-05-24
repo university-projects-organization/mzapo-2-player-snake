@@ -22,7 +22,7 @@ void setSettingsMenuBackground(union pixel **background, unsigned char *image) {
     wordBuffer *wordSnakesColor = makeWordBuffer("Snakes color:", 2);
     wordBuffer *wordFoodOwner = makeWordBuffer("Food owner:", 2);
     wordBuffer *wordFoodAmount = makeWordBuffer("Food amount:", 2);
-    wordBuffer *wordPlayVS = makeWordBuffer("Play VS:", 2);
+    wordBuffer *wordPlayVS = makeWordBuffer("Collisions:", 2);
     wordBuffer *wordSpeed = makeWordBuffer("Speed:", 2);
     wordBuffer *wordBoost = makeWordBuffer("Boost:", 2);
     setWord(wordSnakesColor, 0, background, 50, 15);
@@ -39,11 +39,14 @@ void setSettingsMenuBackground(union pixel **background, unsigned char *image) {
     freeWordBuffer(wordBoost);
 }
 
-void loadSettingsMenu(union pixel **background, union pixel **screen, settingsParameter** settingsParameters, unsigned char *selector, unsigned char *parlcd_reg_base, uint16_t selectorY) {
+void loadSettingsMenu(union pixel **background, union pixel **screen, settingsParameter **settingsParameters,
+                      unsigned char *selector, unsigned char *parlcd_reg_base, uint16_t selectorY) {
     setBackground(background, screen);
     uint16_t colors[] = {0x00, 0xF800, 0x07E0, 0x001F};
-    setWord(settingsParameters[0]->string[settingsParameters[0]->position], colors[settingsParameters[0]->position], screen, 250, 15);
-    setWord(settingsParameters[1]->string[settingsParameters[1]->position], colors[settingsParameters[1]->position], screen, 360, 15);
+    setWord(settingsParameters[0]->string[settingsParameters[0]->position], colors[settingsParameters[0]->position],
+            screen, 250, 15);
+    setWord(settingsParameters[1]->string[settingsParameters[1]->position], colors[settingsParameters[1]->position],
+            screen, 360, 15);
     setWord(settingsParameters[2]->string[settingsParameters[2]->position], 0xFFFF, screen, 300, 65);
     setWord(settingsParameters[3]->string[settingsParameters[3]->position], 0xFFFF, screen, 265, 115);
     setWord(settingsParameters[4]->string[settingsParameters[4]->position], 0xFFFF, screen, 225, 165);
@@ -53,12 +56,34 @@ void loadSettingsMenu(union pixel **background, union pixel **screen, settingsPa
     loadScreen(screen, parlcd_reg_base);
 }
 
-void menuPosition(uint8_t actual, uint8_t *previous, settingsParameter** settingsParameters, int8_t index, int8_t numOptions) {
+void menuPosition(uint8_t actual, uint8_t *previous, settingsParameter **settingsParameters, int8_t index,
+                  int8_t numOptions) {
     int8_t step = knobRotated(actual, previous, numOptions);
     settingsParameters[index]->position = (settingsParameters[index]->position + step + numOptions) % numOptions;
 }
 
-void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned char *parlcd_reg_base, uint8_t *settings, uint8_t* actualG) {
+
+uint32_t switchColor(uint16_t color) {
+    uint32_t ledColor = 0;
+    switch (color) {
+        case 1:
+            ledColor = 255 << 16;
+            break;
+        case 2:
+            ledColor = 255 << 8;
+            break;
+        case 3:
+            ledColor = 255;
+            break;
+        default:
+            ledColor = (255 << 16) + (255 << 8) + 150;
+    }
+    return ledColor;
+}
+
+void
+settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned char *parlcd_reg_base, uint8_t *settings,
+             uint8_t *actualG, uint32_t* colorLed1, uint32_t* colorLed2) {
     int width, height, channels;
     unsigned char *backgroundPicture = stbi_load("/tmp/nazar/resources/SettingsMenu/SettingsMenu.jpg", &width, &height,
                                                  &channels, 0);
@@ -76,20 +101,20 @@ void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned
     uint16_t selectorY = 0;
     int8_t selectorPosition = 0;
     uint32_t previousKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-    uint8_t previousB = (uint8_t)previousKnobs;
-    uint8_t previousG = (uint8_t)(previousKnobs >> 8);
-    uint8_t previousR = (uint8_t)(previousKnobs >> 16);
+    uint8_t previousB = (uint8_t) previousKnobs;
+    uint8_t previousG = (uint8_t) (previousKnobs >> 8);
+    uint8_t previousR = (uint8_t) (previousKnobs >> 16);
 
     while (1) {
         struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 1000};
 
         uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
 
-        uint8_t actualB = (uint8_t)actualKnobs;
-        *actualG = (uint8_t)(actualKnobs >> 8); // actualKnobs % 65536 - actualB;
-        uint8_t actualR = (uint8_t)(actualKnobs >> 16); // actualKnobs % BLUEPRESSED;
+        uint8_t actualB = (uint8_t) actualKnobs;
+        *actualG = (uint8_t) (actualKnobs >> 8); // actualKnobs % 65536 - actualB;
+        uint8_t actualR = (uint8_t) (actualKnobs >> 16); // actualKnobs % BLUEPRESSED;
 
-        uint8_t whichKnobPressed = (uint8_t)(actualKnobs >> 24);
+        uint8_t whichKnobPressed = (uint8_t) (actualKnobs >> 24);
 
 
         if ((*actualG - previousG) % 4 == 0 && *actualG != previousG) {
@@ -124,6 +149,8 @@ void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned
             switch (selectorPosition) {
                 case 0:
                     menuPosition(actualB, &previousB, settingsParameters, 1, 4);
+                    *colorLed2 = switchColor(settingsParameters[1]->position);
+                    *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB2_o) = *colorLed2;
                     break;
                 case 1:
                     menuPosition(actualB, &previousB, settingsParameters, 2, 2);
@@ -150,6 +177,8 @@ void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned
             switch (selectorPosition) {
                 case 0:
                     menuPosition(actualR, &previousR, settingsParameters, 0, 4);
+                    *colorLed1 = switchColor(settingsParameters[0]->position);
+                    *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB1_o) = *colorLed1;
                     break;
                 default:
                     previousR = actualR;
@@ -158,7 +187,8 @@ void settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned
         }
 
         if (whichKnobPressed == 4) {
-            for(size_t i = 0; i < 7; i++) {
+            knobUnpressed(spiled_reg_base);
+            for (size_t i = 0; i < 7; i++) {
                 settings[i] = settingsParameters[i]->position;
             }
             freeSettingsParameter(settingsParameters);

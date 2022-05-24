@@ -40,7 +40,7 @@ settingsParameter **allocateSettingsParameter(uint8_t *settings) {
     settingsParameters[3]->string[0] = makeWordBuffer("LOT", 2);
     settingsParameters[3]->string[1] = makeWordBuffer("LACK", 2);
 
-    // PlayVS
+    // Collisions
     settingsParameters[4]->string = malloc(sizeof(wordBuffer *) * 2);
     settingsParameters[4]->position = settings[4];
     settingsParameters[4]->string[0] = makeWordBuffer("OFF", 2);

@@ -14,6 +14,4 @@ typedef struct food_t {
     apple_t *array;
 } food_t;
 
-food_t *allocateFood();
-
 #endif

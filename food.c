@@ -16,6 +16,12 @@ food_t *allocateFood() {
     return food;
 }
 
+void freeFood (food_t *food) {
+    free(food->image);
+    free(food->array);
+    free(food);
+}
+
 void setFoodImage(food_t *food, unsigned char *image) {
     food->image = image;
 }
@@ -33,16 +39,16 @@ void generateApple(snake_t *snake1, snake_t *snake2, food_t *food1, food_t *food
         jump:
         x = (rand() % 30) * TILESIZE;
         y = (rand() % 19) * TILESIZE;
-        for (size_t j = 0; j < 20; j++){
+        for (size_t j = 0; j < 20; j++) {
             if (food1->array[j].x == 0 || j == index) continue;
-            if (x == food1->array[j].x && y == food1->array[j].y){
+            if (x == food1->array[j].x && y == food1->array[j].y) {
                 goto jump;
             }
         }
 
-        for (size_t j = 0; j < 20; j++){
+        for (size_t j = 0; j < 20; j++) {
             if (food2->array[j].x == 0) continue;
-            if (x == food2->array[j].x && y == food2->array[j].y){
+            if (x == food2->array[j].x && y == food2->array[j].y) {
                 goto jump;
             }
         }
@@ -72,25 +78,3 @@ void setFood(union pixel **screen, food_t *food) {
         setPngImage(screen, food->array[i].x, food->array[i].y, food->image, TILESIZE);
     }
 }
-
-/*
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-apple_t *allocateFood(snake_t *snake1, snake_t *snake2, uint16_t foodX, uint16_t foodY) {
-    apple_t *food = (apple_t *) malloc(sizeof(apple_t));
-    generateFood(food, snake1, snake2, foodX, foodY);
-    return food;
-}
-
-void freeFood(apple_t *food) {
-    free(food);
-}
-
-void setFood(union pixel **screen, apple_t *food) {
-    for (size_t y = food->y; y < TILESIZE + food->y; y++) {
-        for (size_t x = food->x; x < TILESIZE + food->x; x++) {
-            screen[y][x].d = food->image;
-        }
-    }
-}
-
- */

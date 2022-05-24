@@ -9,7 +9,7 @@ LDFLAGS = -lrt
 
 SOURCES = snakes.c ./apo_library/mzapo_phys.c ./apo_library/mzapo_parlcd.c ./apo_library/serialize_lock.c
 SOURCES += ./apo_library/font_prop14x16.c
-SOURCES += game_menu.c knobs_control.c screen.c settings_allocate.c settings_menu.c word_from_font.c snake.c food.c
+SOURCES += game_menu.c knobs_control.c screen.c settings_allocate.c settings_menu.c word_from_font.c snake.c food.c records.c
 #./apo_library/font_rom8x16.c
 TARGET_EXE = snakes
 #TARGET_IP ?= 192.168.223.166
@@ -17,7 +17,7 @@ ifeq ($(TARGET_IP),)
 ifneq ($(filter debug run,$(MAKECMDGOALS)),)
 $(warning The target IP address is not set)
 $(warning Run as "TARGET_IP=192.168.202.xxx make run" or modify Makefile)
-TARGET_IP ?= 192.168.223.156
+TARGET_IP ?= 192.168.223.124
 endif
 endif
 TARGET_DIR ?= /tmp/$(shell whoami)
@@ -68,8 +68,8 @@ ifneq ($(filter %.cpp,$(SOURCES)),)
 	  >> depend
 endif
 
-clean:
-	rm -f *.o *.a $(OBJECTS) $(TARGET_EXE) connect.gdb depend
+#clean:
+#	rm -f *.o *.a $(OBJECTS) $(TARGET_EXE) connect.gdb depend
 
 copy-executable: $(TARGET_EXE)
 	ssh $(SSH_OPTIONS) -t $(TARGET_USER)@$(TARGET_IP) killall gdbserver 1>/dev/null 2>/dev/null || true

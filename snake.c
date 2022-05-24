@@ -28,19 +28,11 @@ allocateSnake(unsigned char *imageTail, unsigned char *imageBody, unsigned char 
     snake->tiles = (tile_t *) malloc(sizeof(tile_t) * 500);
     setTile(snake, x, y, 0, 0);
 
-    /*
-    setTile(snake, 240, 176, 1);
-    setTile(snake, 240, 192, 2);
-    setTile(snake, 240, 208, 3);
-    setTile(snake, 240, 224, 4);
-    setTile(snake, 240, 240, 5);
-    setTile(snake, 240, 256, 6);
-     */
-
     return snake;
 }
 
 void freeSnake(snake_t *snake) {
+    free(snake->color);
     free(snake->imageHead);
     free(snake->imageBody);
     free(snake->imageTail);

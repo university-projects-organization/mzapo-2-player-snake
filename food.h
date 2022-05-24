@@ -7,16 +7,15 @@
 #include "snake_structure.h"
 
 
-
 void setFoodImage(food_t *food, unsigned char *image);
+
+void freeFood (food_t *food);
 
 void generateApple(snake_t *snake1, snake_t *snake2, food_t *food1, food_t *food2);
 
 void setFood(union pixel **screen, food_t *food);
 
-//apple_t *allocateFood(snake_t *snake1, snake_t *snake2, uint16_t foodX, uint16_t foodY);
-
-void freeFood(apple_t *food);
+food_t *allocateFood();
 
 void setAppleColor(apple_t apple, int8_t color);
 

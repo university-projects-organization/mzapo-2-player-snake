@@ -20,45 +20,9 @@
 #include "snake.h"
 #include "stb_library/stb_image.h"
 #include "stb_library/stb_image_write.h"
+#include "records.h"
 
 #define TILESIZE 16
-
-typedef struct {
-    char *stringColor;
-    int16_t eatenApples;
-    int16_t year;
-    int16_t month;
-    int16_t day;
-    int16_t hour;
-    int16_t minute;
-} record_t;
-
-record_t **allocateRecords() {
-    record_t **records = (record_t **)malloc(sizeof(record_t *) * 5);
-    for (size_t i = 0; i < 5; i++) {
-        records[i] = (record_t *) malloc(sizeof(record_t));
-        records[i]->stringColor = (char *) malloc(sizeof(char) * 6);
-    }
-    return records;
-}
-
-
-int8_t knobRotated1(uint8_t actualValue, uint8_t *previousValue, int8_t knob) {
-    int coef;
-    switch (knob) {
-        case BLUE:
-            coef = 4;
-            break;
-        case RED:
-            coef = 4;
-            break;
-    }
-    int16_t difference = (actualValue - *previousValue) / coef;
-    difference = difference == 63 ? -1 : difference == -63 ? 1 : difference;
-    int8_t step = difference;
-    *previousValue = actualValue;
-    return step;
-}
 
 _Bool checkWalls(snake_t *snake) {
     _Bool collision = 0;
@@ -114,265 +78,90 @@ void setUpGame(uint8_t *settings, uint16_t *color1, uint16_t *color2, _Bool *foo
             break;
     }
     *vs = settings[4];
-    switch (settings[3]) {
-        case 0:
-            *speed = 5;
+    switch (settings[5]) {
+        case 0: // medium
+            *speed = 20;
             break;
-        case 1:
+        case 1: // fast
             *speed = 10;
             break;
+        case 2: // slow
+            *speed = 30;
+            break;
 
     }
-    switch (settings[3]) {
+    switch (settings[6]) {
         case 0:
-            *boost = 5;
+            *boost = 80;
             break;
         case 1:
-            *boost = 10;
+            *boost = 40;
+            break;
+        case 2:
+            *boost = 120;
             break;
 
     }
 }
 
-void selectColor(uint16_t color, char *stringColor) {
-    switch (color) {
-        case 0x00:
-            stringColor[0] = 'B';
-            stringColor[1] = 'L';
-            stringColor[2] = 'A';
-            stringColor[3] = 'C';
-            stringColor[4] = 'K';
-            stringColor[5] = '\0';
-            break;
-        case 0xF800:
-            stringColor[0] = 'R';
-            stringColor[1] = 'E';
-            stringColor[2] = 'D';
-            stringColor[3] = '\0';
-            break;
-        case 0x07E0:
-            stringColor[0] = 'G';
-            stringColor[1] = 'R';
-            stringColor[2] = 'E';
-            stringColor[3] = 'E';
-            stringColor[4] = 'N';
-            stringColor[5] = '\0';
-            break;
-        case 0x001F:
-            stringColor[0] = 'B';
-            stringColor[1] = 'L';
-            stringColor[2] = 'U';
-            stringColor[2] = 'E';
-            stringColor[3] = '\0';
-            break;
-    }
+void
+freeAllocatedMemory(union pixel **screen, union pixel **background, snake_t *snake1, snake_t *snake2, food_t *food1,
+                    food_t *food2) {
+    freeScreen(screen);
+    freeScreen(background);
+    freeSnake(snake1);
+    freeSnake(snake2);
+    freeFood(food1);
+    freeFood(food2);
 }
-
-void writeRecord(record_t *record, uint16_t color, FILE *fp) {
-    fprintf(fp, "%s %d %d-%02d-%02d %02d:%02d\n", record->stringColor, record->eatenApples, record->year, record->month,
-            record->month, record->day, record->hour);
-    fclose(fp);
-}
-
-void readLine(FILE *fp, record_t *record) {
-    size_t i = 0;
-    while (1) {
-        char str[2];
-        fgets(str, 1, fp);
-        if (str[0] == ' ') {
-            record->stringColor[i] = '\0';
-            break;
-        } else {
-            record->stringColor[i] = str[0];
-            i++;
-        }
-    }
-
-
-    char number[5];
-    i = 0;
-    while (1) {
-        char str[2];
-        fgets(str, 1, fp);
-        if (str[0] == ' ') {
-            number[i] = '\0';
-            break;
-        } else {
-            number[i] = str[0];
-            i++;
-        }
-    }
-    record->eatenApples = atoi(number);
-
-    i = 0;
-    while (1) {
-        char str[2];
-        fgets(number, 1, fp);
-        if (number[0] == '-') {
-            number[i] = '\0';
-            break;
-        } else {
-            number[i] = str[0];
-            i++;
-        }
-    }
-    record->year = atoi(number);
-
-    i = 0;
-    while (1) {
-        char str[2];
-        fgets(number, 1, fp);
-        if (number[0] == '-') {
-            number[i] = '\0';
-            break;
-        } else {
-            number[i] = str[0];
-            i++;
-        }
-    }
-    record->month = atoi(number);
-
-    i = 0;
-    while (1) {
-        char str[2];
-        fgets(number, 1, fp);
-        if (number[0] == ' ') {
-            number[i] = '\0';
-            break;
-        } else {
-            number[i] = str[0];
-            i++;
-        }
-    }
-    record->day = atoi(number);
-
-    i = 0;
-    while (1) {
-        char str[2];
-        fgets(number, 1, fp);
-        if (number[0] == ':') {
-            number[i] = '\0';
-            break;
-        } else {
-            number[i] = str[0];
-            i++;
-        }
-    }
-    record->hour = atoi(number);
-
-    i = 0;
-    while (1) {
-        char str[2];
-        fgets(number, 1, fp);
-        if (number[0] == '\n') {
-            number[i] = '\0';
-            break;
-        } else {
-            number[i] = str[0];
-            i++;
-        }
-    }
-    record->minute = atoi(number);
-}
-
-record_t **readRecords() {
-    record_t **records = allocateRecords();
-    FILE *fp = fopen("\\resources\\records\\records.txt", "r");
-
-    size_t i = 0;
-    while (feof(fp)) {
-        readLine(fp, records[i]);
-        i++;
-    }
-    return records;
-}
-
-record_t *setNewRecord(uint16_t color, uint16_t eatenApples) {
-    record_t *record = malloc(sizeof(record));
-    record->stringColor = (char *) malloc(sizeof(char) * 6);
-    selectColor(color, record->stringColor);
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-    record->eatenApples = eatenApples;
-    record->year = tm.tm_year + 1900;
-    record->month = tm.tm_mon + 1;
-    record->day = tm.tm_mday;
-    record->hour = tm.tm_hour;
-    record->minute = tm.tm_min;
-    return record;
-}
-
-void saveRecords(snake_t *snake, uint16_t color, record_t **records) {
-    FILE *fp = fopen("\\resources\\records\\records.txt", "w");
-    if (fp == NULL) {
-        printf("Can't open file\n");
-    }
-
-    record_t *newRecord = setNewRecord(color, snake->length + 1);
-
-    for (size_t i = 0; i < 5; i++) {
-        if (newRecord->eatenApples > records[i]->eatenApples) {
-            writeRecord(newRecord, color, fp);
-        } else {
-            writeRecord(records[i], color, fp);
-        }
-        i++;
-    }
-}
-
 
 void gameOver(snake_t *snake, uint16_t color, union pixel **screen, volatile void *spiled_reg_base,
-              unsigned char *parlcd_reg_base) {
+              unsigned char *parlcd_reg_base, int8_t winner, uint32_t* colorLed1, uint32_t* colorLed2) {
+    *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_LINE_o) = (snake->length - 1) << 8;
     wordBuffer *word = makeWordBuffer("GAME OVER", 5);
-    setWord(word, (uint16_t) 0x000, screen, 50, HEIGHT / 2 - 16 * 2);
+    setWord(word, (uint16_t) 0x000, screen, 50, HEIGHT / 2 - 16 * 5);
+    freeWordBuffer(word);
+    switch (winner) {
+        case 0:
+            word = makeWordBuffer("LEFT PLAYER WINS", 2);
+            setWord(word, (uint16_t) 0x000, screen, 120, 160);
+            *colorLed2 = 0;
+            break;
+        case 1:
+            word = makeWordBuffer("RIGHT PLAYER WINS", 2);
+            setWord(word, (uint16_t) 0x000, screen, 110, 160);
+            *colorLed1 = 0;
+            break;
+        default:
+            word = makeWordBuffer("TIE", 3);
+            setWord(word, (uint16_t) 0x000, screen, 220, 165);
+    }
+    freeWordBuffer(word);
     loadScreen(screen, parlcd_reg_base);
     record_t **records = readRecords();
     saveRecords(snake, color, records);
-    exit(0);
-}
 
-void displayOneRecord(record_t *record, union pixel **screen, uint16_t x, uint16_t y) {
-    wordBuffer *word = makeWordBuffer(record->stringColor, 2);
+    int8_t frequency = 30;
+    while (1) {
+        uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
+        uint8_t whichKnobPressed = (uint8_t) (actualKnobs >> 24);
+        if (whichKnobPressed == 4) {
+            knobUnpressed(spiled_reg_base);
+            exit(0);
+        }
 
-    freeWordBuffer(word);
-
-    char string[6];
-    sprintf(string, "%d", record->eatenApples);
-    word = makeWordBuffer(string, 1);
-    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
-
-    sprintf(string, "%d", record->year);
-    word = makeWordBuffer(string, 1);
-    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
-
-    sprintf(string, "%d", record->month);
-    word = makeWordBuffer(string, 1);
-    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
-
-    sprintf(string, "%d", record->day);
-    word = makeWordBuffer(string, 1);
-    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
-
-    sprintf(string, "%d", record->hour);
-    word = makeWordBuffer(string, 1);
-    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
-
-    sprintf(string, "%d", record->minute);
-    word = makeWordBuffer(string, 1);
-    setWord(word, (uint16_t) 0x00, screen, x + 1000, y + 1000);
-}
-
-void recordsMenu(union pixel **screen, unsigned char *parlcd_reg_base) {
-    record_t **records = readRecords();
-    uint16_t x = 0;
-    uint16_t y = 0;
-    for (size_t i = 0; i < 5; i++) {
-        displayOneRecord(records[i], screen,  x,  y);
-        y += 20;
+        if (frequency >= 30) {
+            *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB1_o) = *colorLed1;
+            *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB2_o) = *colorLed2;
+            frequency = 0;
+        } else {
+            *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB1_o) = 0;
+            *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB2_o) = 0;
+            frequency++;
+        }
     }
-    loadScreen(screen, parlcd_reg_base);
-
 }
+
 
 int main(int argc, char *argv[]) {
     volatile void *spiled_reg_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
@@ -383,8 +172,11 @@ int main(int argc, char *argv[]) {
     for (size_t i = 0; i < 7; i++) {
         settings[i] = 0;
     }
+    uint32_t colorLed1 = (255 << 16) + (255 << 8) + 150;
+    uint32_t colorLed2 = (255 << 16) + (255 << 8) + 150;
+
     union pixel **screen = allocateScreen();
-    if (!gameMenu(screen, settings, spiled_reg_base, parlcd_reg_base)) {
+    if (!gameMenu(screen, settings, spiled_reg_base, parlcd_reg_base, &colorLed1, &colorLed2)) {
         return 0;
     }
 
@@ -399,9 +191,6 @@ int main(int argc, char *argv[]) {
     pngImageToPixelArray(backgroundPicture, background);
     free(backgroundPicture);
 
-
-    int counterSpeed = 30;
-    int boost1 = 5;
     uint16_t color1;
     uint16_t color2;
     _Bool foodOwner;
@@ -411,31 +200,33 @@ int main(int argc, char *argv[]) {
     uint8_t boost;
 
     setUpGame(settings, &color1, &color2, &foodOwner, &foodAmount, &collisions, &speed, &boost);
+    free(settings);
     food_t *food1 = allocateFood();
     food_t *food2 = allocateFood();
     snake_t *snake1 = chooseColor(color1, food1, (uint16_t) 0, (uint16_t) 160, (int8_t) 1);
-    snake_t *snake2 = chooseColor(color2, food2, (uint16_t) 464, (uint16_t) 160, (int8_t) 3);
+    snake_t *snake2 = chooseColor(color2, food2, (uint16_t) 464, (uint16_t) 160,
+                                  (int8_t) 3);//////////////////////////////////////////////////////////////
     int frequency = foodAmount;
-
-    int k = 30;
+    int counterSpeed = speed;
+    int k = speed;
+    int l = 0;
 
     uint32_t previousKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-    uint8_t previousB = (uint8_t)previousKnobs;
-    uint8_t previousG = (uint8_t)(previousKnobs >> 8);
-    uint8_t previousR = (uint8_t)(previousKnobs >> 16);
+    uint8_t previousB = (uint8_t) previousKnobs;
+    uint8_t previousR = (uint8_t) (previousKnobs >> 16);
 
+    uint8_t winner = 0;
     while (1) {
         struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 2000 * 1000 * 1000};
 
         uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-        uint8_t actualB = (uint8_t)actualKnobs;
-        uint8_t actualG = (uint8_t)(actualKnobs >> 8); // actualKnobs % 65536 - actualB;
-        uint8_t actualR = (uint8_t)(actualKnobs >> 16); // actualKnobs % BLUEPRESSED;
+        uint8_t actualB = (uint8_t) actualKnobs;
+        uint8_t actualR = (uint8_t) (actualKnobs >> 16);
 
-        uint8_t whichKnobPressed = (uint8_t)(actualKnobs >> 24);
+        uint8_t whichKnobPressed = (uint8_t) (actualKnobs >> 24);
 
         if ((actualB - previousB) % 4 == 0 && actualB != previousB) {
-            int8_t step = knobRotated1(actualB, &previousB, BLUE);
+            int8_t step = knobRotated(actualB, &previousB, 0);
             if (step < -1 || step > 1) {
                 printf("neok\n");
             } else {
@@ -444,7 +235,7 @@ int main(int argc, char *argv[]) {
         }
 
         if ((actualR - previousR) % 4 == 0 && actualR != previousR) {
-            int8_t step = knobRotated1(actualR, &previousR, RED);
+            int8_t step = knobRotated(actualR, &previousR, 0);
             if (step < -1 || step > 1) {
                 printf("neok\n");
             } else {
@@ -458,8 +249,15 @@ int main(int argc, char *argv[]) {
             exit(-1);
         }
 
+        if (l >= boost) {
+            counterSpeed = counterSpeed > 1 ? counterSpeed - 1 : 1;
+            l = 0;
+        } else {
+            l++;
+        }
 
-        if (k == counterSpeed) {
+
+        if (k >= counterSpeed) {
             moveForward(snake1);
             moveForward(snake2);
             k = 0;
@@ -467,44 +265,67 @@ int main(int argc, char *argv[]) {
             k++;
         }
 
-
         if (checkWalls(snake1)) {
-            gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base);
+            winner += 1;
+            //gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base, 1);
         }
         if (checkWalls(snake2)) {
-            gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base);
+            winner += 2;
+            //gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base, 0);
         }
 
         if (collisions) {
             if (checkSnakeCollision(snake1, snake1, 1)) {
-                gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base);
+                winner += 1;
+                //gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base, 1);
             }
 
             if (checkSnakeCollision(snake2, snake2, 1)) {
-                gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base);
+                winner += 2;
+                //gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base, 0);
             }
 
             if (checkSnakeCollision(snake1, snake2, 0)) {
-                gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base);
+                winner += 1;
+                //gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base, 1);
             }
 
             if (checkSnakeCollision(snake2, snake1, 0)) {
-                gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base);
+                winner += 2;
+                //gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base, 0);
             }
+        }
+
+        if (winner == 1) {
+            gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base, 1, &colorLed1, &colorLed2);
+            goto end;
+        } else if (winner == 2) {
+            gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base, 0,  &colorLed1, &colorLed2);
+            goto end;
+        } else if (winner == 3) {
+            if (snake2->length > snake1->length) {
+                gameOver(snake1, color1, screen, spiled_reg_base, parlcd_reg_base, 0,  &colorLed1, &colorLed2);
+            } else if (snake2->length < snake1->length) {
+                gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base, 1,  &colorLed1, &colorLed2);
+            } else {
+                gameOver(snake2, color2, screen, spiled_reg_base, parlcd_reg_base, 2,  &colorLed1, &colorLed2);
+            }
+            goto end;
         }
 
         if (frequency == foodAmount) {
             if (food1->length < 20) {
                 generateApple(snake1, snake2, food1, food2);
+                food1->length++;
             }
             if (food2->length < 20) {
                 generateApple(snake1, snake2, food2, food1);
+                food2->length++;
             }
             frequency = 0;
         } else {
             frequency++;
         }
-
 
         if (checkApple(snake1->tiles[0], food1)) {
             snake1->length++;
@@ -512,14 +333,15 @@ int main(int argc, char *argv[]) {
             snake1->tiles[snake1->length - 1].y = snake1->lastTile.y;
             snake1->tiles[snake1->length - 1].direction = snake1->lastTile.direction;
             counterSpeed = counterSpeed == 1 ? 1 : counterSpeed - 1;
-
+            food1->length--;
         }
         if (checkApple(snake2->tiles[0], food2)) {
             snake2->length++;
             snake2->tiles[snake2->length - 1].x = snake2->lastTile.x;
             snake2->tiles[snake2->length - 1].y = snake2->lastTile.y;
-            snake1->tiles[snake2->length - 1].direction = snake2->lastTile.direction;
+            snake2->tiles[snake2->length - 1].direction = snake2->lastTile.direction;
             counterSpeed = counterSpeed == 1 ? 1 : counterSpeed - 1;
+            food2->length--;
         }
         if (!foodOwner) {
             if (checkApple(snake1->tiles[0], food2)) {
@@ -528,15 +350,22 @@ int main(int argc, char *argv[]) {
                 snake1->tiles[snake1->length - 1].y = snake1->lastTile.y;
                 snake1->tiles[snake1->length - 1].direction = snake1->lastTile.direction;
                 counterSpeed = counterSpeed == 1 ? 1 : counterSpeed - 1;
+                food2->length--;
             }
             if (checkApple(snake2->tiles[0], food1)) {
                 snake2->length++;
                 snake2->tiles[snake2->length - 1].x = snake2->lastTile.x;
                 snake2->tiles[snake2->length - 1].y = snake2->lastTile.y;
-                snake1->tiles[snake2->length - 1].direction = snake2->lastTile.direction;
+                snake2->tiles[snake2->length - 1].direction = snake2->lastTile.direction;
                 counterSpeed = counterSpeed == 1 ? 1 : counterSpeed - 1;
+                food1->length--;
             }
         }
+
+        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_LINE_o) =
+                ((snake1->length - 1) << 16) + (snake2->length - 1);
+        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB1_o) = colorLed1;
+        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB2_o) = colorLed2;
 
         setBackground(background, screen);
         setFood(screen, food1);
@@ -549,7 +378,7 @@ int main(int argc, char *argv[]) {
         sprintf(string, "%d", snake1->length - 1);
         wordBuffer *word = makeWordBuffer(string, 2);
         setWord(word, color1, screen, 33, 0);
-        free(word);
+        freeWordBuffer(word);
 
         setPngImage(screen, 447, 0, snake2->color, 32);
         sprintf(string, "%d", snake2->length - 1);
@@ -561,9 +390,11 @@ int main(int argc, char *argv[]) {
             screenX -= 30;
         }
         setWord(word, color2, screen, screenX, 0);
-        free(word);
+        freeWordBuffer(word);
 
         loadScreen(screen, parlcd_reg_base);
         clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
     }
+    end:
+    freeAllocatedMemory(screen, background, snake1, snake2, food1, food2);
 }
