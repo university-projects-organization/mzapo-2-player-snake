@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "apo_library/mzapo_parlcd.h"
-#include "pixel.h"
+#include "pixel_structure.h"
 #include "screen.h"
 
 union pixel **allocateScreen(void) {

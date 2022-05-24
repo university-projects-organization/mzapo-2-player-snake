@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include "pixel.h"
+#include "pixel_structure.h"
 
 union pixel **allocateScreen(void);
 

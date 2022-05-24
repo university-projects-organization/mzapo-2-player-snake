@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "records.h"
-#include "word_buffer.h"
+#include "wordbuffer_structure.h"
 #include "word_from_font.h"
 #include "screen.h"
 #include "knobs_control.h"
@@ -65,7 +65,6 @@ void selectColor(uint16_t color, char *stringColor) {
             stringColor[4] = '\0';
             break;
     }
-    printf("%s\n", stringColor);
 }
 
 void readLine(FILE *fp, record_t *record) {
@@ -134,7 +133,7 @@ void displayOneRecord(record_t *record, union pixel **screen, uint16_t x, uint16
     freeWordBuffer(word);
 }
 
-void recordsMenu(union pixel **screen, void *spiled_reg_base, unsigned char *parlcd_reg_base, uint8_t *actualG) {
+void recordsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned char *parlcd_reg_base, uint8_t *actualG) {
     int width, height, channels;
     unsigned char *backgroundPicture = stbi_load("/tmp/nazar/resources/GameField/GameBack.png", &width, &height,
                                                  &channels, 0);
@@ -172,9 +171,7 @@ void recordsMenu(union pixel **screen, void *spiled_reg_base, unsigned char *par
 record_t *setNewRecord(uint16_t color, uint16_t eatenApples) {
     record_t *record = malloc(sizeof(record_t));
     record->stringColor = (char *) malloc(sizeof(char) * 6);
-    printf("Before select Color\n");
     selectColor(color, record->stringColor);
-    printf("After select Color\n");
     record->eatenApples = eatenApples;
     return record;
 }
@@ -186,7 +183,6 @@ void saveRecords(snake_t *snake, uint16_t color, record_t **records) {
     }
 
     record_t *newRecord = setNewRecord(color, snake->length - 1);
-    printf("after set new record\n");
     _Bool tmp = 1;
     for (size_t i = 0, j = 0; i < 5; i++) {
         if (newRecord->eatenApples > records[j]->eatenApples && tmp) {

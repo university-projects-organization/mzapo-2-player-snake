@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "food_structure.h"
 #include "snake_structure.h"
-#include "pixel.h"
+#include "pixel_structure.h"
 
 void setTile(snake_t *snake, uint16_t x, uint16_t y, uint8_t index, uint8_t direction);
 

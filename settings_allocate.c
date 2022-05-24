@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include "settings_struct.h"
+#include "settings_structure.h"
 #include "word_from_font.h"
 
 settingsParameter **allocateSettingsParameter(uint8_t *settings) {

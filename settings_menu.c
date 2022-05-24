@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <time.h>
-#include "pixel.h"
+#include "pixel_structure.h"
 #include "settings_allocate.h"
 #include "apo_library/mzapo_regs.h"
 #include "screen.h"
@@ -22,19 +22,19 @@ void setSettingsMenuBackground(union pixel **background, unsigned char *image) {
     wordBuffer *wordSnakesColor = makeWordBuffer("Snakes color:", 2);
     wordBuffer *wordFoodOwner = makeWordBuffer("Food owner:", 2);
     wordBuffer *wordFoodAmount = makeWordBuffer("Food amount:", 2);
-    wordBuffer *wordPlayVS = makeWordBuffer("Collisions:", 2);
+    wordBuffer *wordCollisions = makeWordBuffer("Collisions:", 2);
     wordBuffer *wordSpeed = makeWordBuffer("Speed:", 2);
     wordBuffer *wordBoost = makeWordBuffer("Boost:", 2);
     setWord(wordSnakesColor, 0, background, 50, 15);
     setWord(wordFoodOwner, 0, background, 50, 65);
     setWord(wordFoodAmount, 0, background, 50, 115);
-    setWord(wordPlayVS, 0, background, 50, 165);
+    setWord(wordCollisions, 0, background, 50, 165);
     setWord(wordSpeed, 0, background, 50, 215);
     setWord(wordBoost, 0, background, 50, 265);
     freeWordBuffer(wordSnakesColor);
     freeWordBuffer(wordFoodOwner);
     freeWordBuffer(wordFoodAmount);
-    freeWordBuffer(wordPlayVS);
+    freeWordBuffer(wordCollisions);
     freeWordBuffer(wordSpeed);
     freeWordBuffer(wordBoost);
 }
@@ -111,8 +111,8 @@ settingsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned char
         uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
 
         uint8_t actualB = (uint8_t) actualKnobs;
-        *actualG = (uint8_t) (actualKnobs >> 8); // actualKnobs % 65536 - actualB;
-        uint8_t actualR = (uint8_t) (actualKnobs >> 16); // actualKnobs % BLUEPRESSED;
+        *actualG = (uint8_t) (actualKnobs >> 8);
+        uint8_t actualR = (uint8_t) (actualKnobs >> 16);
 
         uint8_t whichKnobPressed = (uint8_t) (actualKnobs >> 24);
 

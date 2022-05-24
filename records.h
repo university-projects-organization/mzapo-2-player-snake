@@ -19,7 +19,7 @@ record_t **readRecords();
 
 void displayOneRecord(record_t *record, union pixel **screen, uint16_t x, uint16_t y);
 
-void recordsMenu(union pixel **screen, void *spiled_reg_base, unsigned char *parlcd_reg_base, uint8_t *actualG);
+void recordsMenu(union pixel **screen, volatile void *spiled_reg_base, unsigned char *parlcd_reg_base, uint8_t *actualG);
 
 record_t *setNewRecord(uint16_t color, uint16_t eatenApples);
 

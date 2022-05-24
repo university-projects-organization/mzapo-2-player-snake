@@ -2,8 +2,8 @@
 #define WORD_FROM_FONT_H
 
 #include <stdint.h>
-#include "word_buffer.h"
-#include "pixel.h"
+#include "wordbuffer_structure.h"
+#include "pixel_structure.h"
 
 wordBuffer *allocateWordBuffer(uint16_t width, uint16_t height);
 

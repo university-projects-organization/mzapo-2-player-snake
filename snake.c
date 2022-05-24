@@ -225,11 +225,11 @@ void chooseDirection(snake_t *snake, int8_t step) {
 snake_t *chooseColor(uint16_t color, food_t *food, uint16_t x, uint16_t y, int8_t direction) {
     int width, height, channels;
     snake_t *snake;
-    unsigned char *apple;
-    unsigned char *pic;
-    unsigned char *tail;
-    unsigned char *body;
-    unsigned char *head;
+    unsigned char *apple = NULL;
+    unsigned char *pic = NULL;
+    unsigned char *tail = NULL;
+    unsigned char *body = NULL;
+    unsigned char *head = NULL;
 
     switch (color) {
         case 0x00:

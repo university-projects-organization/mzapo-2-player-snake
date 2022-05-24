@@ -34,7 +34,6 @@ gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_reg_base
 
     uint16_t selectorY = 22;
     uint32_t previousKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-    uint8_t previousB = (uint8_t) previousKnobs;
     uint8_t previousG = (uint8_t) (previousKnobs >> 8);
 
     int8_t position = 0;
@@ -43,9 +42,7 @@ gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_reg_base
 
 
         uint32_t actualKnobs = *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_KNOBS_8BIT_o);
-        uint8_t actualB = (uint8_t) actualKnobs;
-        uint8_t actualG = (uint8_t) (actualKnobs >> 8); // actualKnobs % 65536 - actualB;
-        uint8_t actualR = (uint8_t) (actualKnobs >> 16); // actualKnobs % BLUEPRESSED;
+        uint8_t actualG = (uint8_t) (actualKnobs >> 8);
 
         uint8_t whichKnobPressed = (uint8_t) (actualKnobs >> 24);
 
@@ -71,7 +68,6 @@ gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_reg_base
         if (whichKnobPressed == 4) {
             knobUnpressed(spiled_reg_base);
             endGame(screen, background, selector, settings);
-            printf("Red button\n");
             goto end;
         }
 
@@ -80,7 +76,6 @@ gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_reg_base
             knobUnpressed(spiled_reg_base);
             switch (position) {
                 case 0:
-                    printf("New Game pressed\n");
                     ret = 1;
                     freeScreen(background);
                     free(selector);
@@ -92,12 +87,11 @@ gameMenu(union pixel **screen, uint8_t *settings, volatile void *spiled_reg_base
                     settingsMenu(screen, spiled_reg_base, parlcd_reg_base, settings, &previousG, colorLed1, colorLed2);
                     break;
                 default:
-                    printf("Exit pressed\n");
                     endGame(screen, background, selector, settings);
                     goto end;
             }
         }
-        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_LINE_o) = (2 << 32) - 1;
+        *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_LINE_o) = (1 << 32) - 1;
         *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB1_o) = *colorLed1;
         *(volatile uint32_t *) (spiled_reg_base + SPILED_REG_LED_RGB2_o) = *colorLed2;
         setBackground(background, screen);

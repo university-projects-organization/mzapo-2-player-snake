@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "apo_library/font_types.h"
-#include "word_buffer.h"
-#include "pixel.h"
+#include "wordbuffer_structure.h"
+#include "pixel_structure.h"
 
 wordBuffer *allocateWordBuffer(uint16_t width, uint16_t height) {
     wordBuffer *font = malloc(sizeof(wordBuffer));

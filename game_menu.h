@@ -1,7 +1,7 @@
 #ifndef GAME_MENU_H
 #define GAME_MENU_H
 
-#include "pixel.h"
+#include "pixel_structure.h"
 #include <stdint.h>
 
 void endGame(union pixel **screen, union pixel **background, unsigned char *selector, uint8_t *settings);

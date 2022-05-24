@@ -5,14 +5,13 @@ CPPFLAGS = -I . -I ./apo_library -I ./stb_library
 CFLAGS =-g -std=gnu99 -O1 -Wall
 CXXFLAGS = -g -std=gnu++11 -O1 -Wall
 LDFLAGS = -lrt
-#LDLIBS = -lm -lpthread
 
-SOURCES = snakes.c ./apo_library/mzapo_phys.c ./apo_library/mzapo_parlcd.c ./apo_library/serialize_lock.c
+SOURCES = main.c ./apo_library/mzapo_phys.c ./apo_library/mzapo_parlcd.c ./apo_library/serialize_lock.c
 SOURCES += ./apo_library/font_prop14x16.c
-SOURCES += game_menu.c knobs_control.c screen.c settings_allocate.c settings_menu.c word_from_font.c snake.c food.c records.c
-#./apo_library/font_rom8x16.c
-TARGET_EXE = snakes
-#TARGET_IP ?= 192.168.223.166
+SOURCES += game_menu.c knobs_control.c screen.c settings_allocate.c settings_menu.c word_from_font.c snake.c food.c records.c game.c collisions.c
+
+TARGET_EXE = main
+
 ifeq ($(TARGET_IP),)
 ifneq ($(filter debug run,$(MAKECMDGOALS)),)
 $(warning The target IP address is not set)
@@ -69,7 +68,7 @@ ifneq ($(filter %.cpp,$(SOURCES)),)
 endif
 
 #clean:
-#	rm -f *.o *.a $(OBJECTS) $(TARGET_EXE) connect.gdb depend
+	#rm -f *.o *.a $(OBJECTS) $(TARGET_EXE) connect.gdb depend
 
 copy-executable: $(TARGET_EXE)
 	ssh $(SSH_OPTIONS) -t $(TARGET_USER)@$(TARGET_IP) killall gdbserver 1>/dev/null 2>/dev/null || true

@@ -2,8 +2,8 @@
 #define SETTINGS_MENU_H
 
 #include <stdint.h>
-#include "pixel.h"
-#include "settings_struct.h"
+#include "pixel_structure.h"
+#include "settings_structure.h"
 
 void loadSettingsMenu(union pixel **background, union pixel **screen, settingsParameter **settingsParameters,
                       unsigned char *selector, unsigned char *parlcd_reg_base, uint16_t selectorY);
